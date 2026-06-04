@@ -7,7 +7,8 @@ type TwinResultSectionProps = {
   problems: string;
   answers: string;
   isProcessing: boolean;
-  error: string | null;
+  isTwinError: boolean;
+  onRetry: () => void;
 };
 
 const SECTION_LABELS = [
@@ -20,15 +21,31 @@ export default function TwinResultSection({
   problems,
   answers,
   isProcessing,
-  error,
+  isTwinError,
+  onRetry,
 }: TwinResultSectionProps) {
   const problemParts = splitTwinSections(problems);
   const answerParts = splitTwinSections(answers);
 
   return (
     <div className="flex w-full max-w-lg flex-col gap-6">
-      {error ? (
-        <p className="w-full text-center text-sm text-red-400">{error}</p>
+      {isTwinError ? (
+        <div
+          role="alert"
+          className="flex w-full flex-col items-center gap-4 rounded-2xl border border-orange-500/45 bg-orange-950/40 px-5 py-5 shadow-lg shadow-orange-900/20"
+        >
+          <p className="text-center text-sm font-semibold leading-relaxed text-orange-300">
+            AI가 바빠요 <span aria-hidden>👾</span> 잠시 후 다시 시작해 주세요.
+          </p>
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={isProcessing}
+            className="flex h-11 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#1f2937] px-5 text-sm font-bold text-[#a3e635] shadow-md shadow-[#84cc16]/15 transition-all hover:border-[#84cc16] hover:bg-[#84cc16]/10 hover:text-[#bef264] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            다시 시도하기 🔄
+          </button>
+        </div>
       ) : null}
 
       <h2 className="text-center text-lg font-bold tracking-tight text-[#84cc16]">

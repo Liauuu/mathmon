@@ -20,6 +20,8 @@ export default function MathProblemUploadButton() {
   const [isTwinProcessing, setIsTwinProcessing] = useState(false);
   const [twinProblems, setTwinProblems] = useState("");
   const [twinAnswers, setTwinAnswers] = useState("");
+  const [twinSourceText, setTwinSourceText] = useState("");
+  const [isTwinError, setIsTwinError] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const hasExtracted =
@@ -70,19 +72,10 @@ export default function MathProblemUploadButton() {
     }
   }
 
-  async function handleTwinGenerate() {
-    if (!extractedText.trim()) return;
-
-    const confirmed = window.confirm(TWIN_CONFIRM_MESSAGE);
-    if (!confirmed) return;
-
-    const problemText = extractedText;
-
-    setPhase("twins");
-    setExtractedText("");
+  async function runTwinGeneration(problemText: string) {
+    setIsTwinError(false);
     setTwinProblems("");
     setTwinAnswers("");
-    setError(null);
     setIsTwinProcessing(true);
 
     try {
@@ -113,15 +106,29 @@ export default function MathProblemUploadButton() {
       }
       setTwinProblems(final.problems);
       setTwinAnswers(final.answers);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "연습문제 생성 중 오류가 발생했습니다.",
-      );
+    } catch {
+      setIsTwinError(true);
     } finally {
       setIsTwinProcessing(false);
     }
+  }
+
+  async function handleTwinGenerate() {
+    if (!extractedText.trim()) return;
+
+    const confirmed = window.confirm(TWIN_CONFIRM_MESSAGE);
+    if (!confirmed) return;
+
+    const problemText = extractedText;
+    setTwinSourceText(problemText);
+    setPhase("twins");
+    setError(null);
+    await runTwinGeneration(problemText);
+  }
+
+  async function handleTwinRetry() {
+    if (!twinSourceText.trim() || isTwinProcessing) return;
+    await runTwinGeneration(twinSourceText);
   }
 
   if (phase === "twins") {
@@ -130,7 +137,8 @@ export default function MathProblemUploadButton() {
         problems={twinProblems}
         answers={twinAnswers}
         isProcessing={isTwinProcessing}
-        error={error}
+        isTwinError={isTwinError}
+        onRetry={handleTwinRetry}
       />
     );
   }
