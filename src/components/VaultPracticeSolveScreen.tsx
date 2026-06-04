@@ -10,6 +10,11 @@ import ProblemDrawingCanvas, {
   type ProblemDrawingCanvasHandle,
 } from "@/components/ProblemDrawingCanvas";
 import {
+  clearSolveScreenActive,
+  flushPendingPwaReload,
+  markSolveScreenActive,
+} from "@/lib/pwa-update";
+import {
   loadVaultProblems,
   saveVaultProblemGrade,
   type ProblemGradeStatus,
@@ -82,6 +87,14 @@ export default function VaultPracticeSolveScreen({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    markSolveScreenActive();
+    return () => {
+      clearSolveScreenActive();
+      flushPendingPwaReload();
+    };
+  }, []);
 
   useEffect(() => {
     return () => {

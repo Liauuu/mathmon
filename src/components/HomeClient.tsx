@@ -13,6 +13,7 @@ export default function HomeClient() {
   const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState<AppTab>("home");
   const [homeResetKey, setHomeResetKey] = useState(0);
+  const [storageMountKey, setStorageMountKey] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (currentUser) => {
@@ -25,6 +26,11 @@ export default function HomeClient() {
   function goHome() {
     setTab("home");
     setHomeResetKey((k) => k + 1);
+  }
+
+  function goStorage() {
+    setTab("storage");
+    setStorageMountKey((k) => k + 1);
   }
 
   if (authLoading) {
@@ -55,13 +61,16 @@ export default function HomeClient() {
         {tab === "home" ? (
           <MathProblemUploadButton key={homeResetKey} userId={user.uid} />
         ) : (
-          <ProblemStorageScreen userId={user.uid} />
+          <ProblemStorageScreen
+            key={storageMountKey}
+            userId={user.uid}
+          />
         )}
       </div>
       <BottomNav
         activeTab={tab}
         onHome={goHome}
-        onStorage={() => setTab("storage")}
+        onStorage={goStorage}
       />
     </>
   );
