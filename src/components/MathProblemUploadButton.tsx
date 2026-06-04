@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import imageCompression from "browser-image-compression";
+import MathProblemPreview from "@/components/MathProblemPreview";
 
 async function parseExtractStream(
   response: Response,
@@ -124,16 +125,9 @@ export default function MathProblemUploadButton() {
         <p className="w-full text-center text-sm text-red-400">{error}</p>
       ) : null}
 
-      <textarea
-        value={extractedText}
-        onChange={(e) => setExtractedText(e.target.value)}
-        placeholder={
-          isProcessing
-            ? "추출된 수식이 여기에 실시간으로 표시됩니다..."
-            : "사진을 업로드하면 추출된 문제 텍스트가 여기에 표시됩니다."
-        }
-        rows={10}
-        className="w-full resize-y rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] px-4 py-3 text-sm leading-relaxed text-gray-100 placeholder:text-gray-500 focus:border-[#84cc16] focus:outline-none focus:ring-2 focus:ring-[#84cc16]/40"
+      <MathProblemPreview
+        content={extractedText}
+        isProcessing={isProcessing}
       />
     </div>
   );

@@ -18,3 +18,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/* KaTeX — 다크 테마 수식 미리보기 */
+.math-problem-preview .katex {
+  color: #f3f4f6;
+  font-size: 1.05em;
+}
+
+.math-problem-preview .katex-display {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25rem 0;
+}
+
+.math-problem-preview .katex-error {
+  color: #fca5a5;
+}
