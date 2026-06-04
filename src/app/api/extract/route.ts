@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const PROMPT =
   "너는 최고의 수학 문제 OCR AI야. 이미지에서 수학 문제의 텍스트와 수식을 정확하게 추출해줘. 모든 수학 기호와 수식은 반드시 LaTeX 문법을 사용해 $ 기호로 감싸줘 (예: $y = ax + b$). 불필요한 설명 없이 문제 내용만 깔끔하게 텍스트로 출력해줘.";
 
