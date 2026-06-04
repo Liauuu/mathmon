@@ -2,19 +2,20 @@ import { geminiResponseToSseStream } from "@/lib/gemini-sse";
 
 export const runtime = "nodejs";
 
-const GEMINI_MODEL = "gemini-2.5-flash";
-const PROMPT =
-  "너는 최고의 수학 문제 OCR AI야. 이미지에서 수학 문제의 텍스트와 수식을 정확하게 추출해줘. 모든 수학 기호와 수식은 반드시 LaTeX 문법을 사용해 $ 기호로 감싸줘 (예: $y = ax + b$). 불필요한 설명 없이 문제 내용만 깔끔하게 텍스트로 출력해줘.";
+const GEMINI_MODEL = "gemini-2.5-pro";
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  let binary = "";
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
+const SYSTEM_PROMPT = `너는 최고의 수학 강사야. 입력된 수학 문제와 완전히 동일하되, 숫자가 바뀐 '쌍둥이 문제'를 정확히 3개 만들어줘.
+풀이 과정은 절대 포함하지 말고, 오직 [문제 영역]과 [정답 영역]만 작성해.
+모든 수학 기호와 수식은 반드시 LaTeX로 작성하고, 인라인은 $...$, 블록은 $$...$$ 규칙을 철저히 지켜.
+
+반드시 아래 JSON 형식만 출력해. 다른 설명, 마크다운 코드블록, 주석은 금지.
+
+{
+  "problems": "1. 첫 번째 문제 전체 텍스트\\n2. 두 번째 문제\\n3. 세 번째 문제",
+  "answers": "1. [정답]\\n2. [정답]\\n3. [정답]"
 }
+
+problems 필드에는 번호 1~3이 붙은 문제 3개를 한 문자열에 넣고, answers 필드에는 각 문제의 정답만 번호와 함께 넣어.`;
 
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -24,20 +25,17 @@ export async function POST(request: Request) {
     });
   }
 
-  let formData: FormData;
+  let body: { problemText?: string };
   try {
-    formData = await request.formData();
+    body = await request.json();
   } catch {
     return new Response("요청 형식이 올바르지 않습니다.", { status: 400 });
   }
 
-  const file = formData.get("image");
-  if (!file || !(file instanceof Blob)) {
-    return new Response("이미지 파일이 필요합니다.", { status: 400 });
+  const problemText = body.problemText?.trim();
+  if (!problemText) {
+    return new Response("문제 텍스트가 필요합니다.", { status: 400 });
   }
-
-  const mimeType = file.type || "image/webp";
-  const base64 = arrayBufferToBase64(await file.arrayBuffer());
 
   const geminiUrl = new URL(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent`,
@@ -52,16 +50,15 @@ export async function POST(request: Request) {
       contents: [
         {
           parts: [
-            { text: PROMPT },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64,
-              },
-            },
+            { text: SYSTEM_PROMPT },
+            { text: `입력된 원본 문제:\n\n${problemText}` },
           ],
         },
       ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.7,
+      },
     }),
   });
 
