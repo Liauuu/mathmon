@@ -5,6 +5,8 @@ export type SamPracticeParams = {
   teacherUid: string;
   lectureId: string;
   classId: string;
+  /** 쌤 로그인과 동일한 구글 계정 힌트 */
+  loginEmail?: string;
 };
 
 const DEFAULT_SAM_APP_URL = "https://sam-two-tau.vercel.app";
@@ -25,6 +27,7 @@ export function parseSamPracticeParams(
   const teacherUid = params.get("teacherUid")?.trim();
   const lectureId = params.get("lectureId")?.trim();
   const classId = params.get("classId")?.trim();
+  const loginEmail = params.get("loginEmail")?.trim() || undefined;
 
   if (!studentId || !vaultId || !teacherUid || !lectureId || !classId) {
     return null;
@@ -37,6 +40,7 @@ export function parseSamPracticeParams(
     teacherUid,
     lectureId,
     classId,
+    loginEmail,
   };
 }
 

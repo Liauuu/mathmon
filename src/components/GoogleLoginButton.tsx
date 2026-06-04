@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase";
+import {
+  signInWithGoogle,
+  signInWithGoogleForSamManual,
+} from "@/lib/firebase";
 
 function GoogleIcon() {
   return (
@@ -26,15 +29,28 @@ function GoogleIcon() {
   );
 }
 
-export default function GoogleLoginButton() {
+type GoogleLoginButtonProps = {
+  loginEmail?: string;
+  variant?: "default" | "sam";
+};
+
+export default function GoogleLoginButton({
+  loginEmail,
+  variant = "default",
+}: GoogleLoginButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSam = variant === "sam";
 
   async function handleGoogleLogin() {
     setLoading(true);
     setError(null);
     try {
-      await signInWithGoogle();
+      if (isSam) {
+        await signInWithGoogleForSamManual(loginEmail);
+      } else {
+        await signInWithGoogle();
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "로그인에 실패했습니다.";
@@ -53,7 +69,13 @@ export default function GoogleLoginButton() {
         className="flex h-14 w-full max-w-xs items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white px-6 text-base font-semibold text-gray-800 shadow-lg shadow-black/30 transition-all hover:bg-gray-50 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <GoogleIcon />
-        <span>{loading ? "로그인 중..." : "구글 계정으로 로그인"}</span>
+        <span>
+          {loading
+            ? "로그인 중..."
+            : isSam
+              ? "쌤과 같은 계정으로 로그인"
+              : "구글 계정으로 로그인"}
+        </span>
       </button>
       {error && (
         <p className="max-w-xs text-center text-sm text-red-400">{error}</p>

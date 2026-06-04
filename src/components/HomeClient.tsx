@@ -8,7 +8,11 @@ import GoogleLoginButton from "@/components/GoogleLoginButton";
 import MathProblemUploadButton from "@/components/MathProblemUploadButton";
 import ProblemStorageScreen from "@/components/ProblemStorageScreen";
 import SamVaultPracticeScreen from "@/components/SamVaultPracticeScreen";
-import { clearSamRedirectPending, getFirebaseAuth } from "@/lib/firebase";
+import {
+  clearSamAuthRedirectAttempted,
+  clearSamRedirectPending,
+  getFirebaseAuth,
+} from "@/lib/firebase";
 import { parseSamPracticeParams } from "@/lib/sam-integration";
 
 function HomeClientContent() {
@@ -25,7 +29,10 @@ function HomeClientContent() {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
-      if (currentUser) clearSamRedirectPending();
+      if (currentUser) {
+        clearSamRedirectPending();
+        clearSamAuthRedirectAttempted();
+      }
     });
     return unsubscribe;
   }, []);

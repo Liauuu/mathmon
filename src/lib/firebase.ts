@@ -43,20 +43,21 @@ export async function signInWithGoogle(): Promise<UserCredential> {
 }
 
 const SAM_REDIRECT_PENDING_KEY = "mathmon_sam_redirect_pending";
+const SAM_AUTH_REDIRECT_ATTEMPTED_KEY = "mathmon_sam_auth_redirect_attempted";
 
 export async function completeSamRedirectSignIn(): Promise<UserCredential | null> {
   const auth = getFirebaseAuth();
-  return getRedirectResult(auth);
+  try {
+    return await getRedirectResult(auth);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
 }
 
-export async function signInWithGoogleRedirectForSam(): Promise<void> {
-  const auth = getFirebaseAuth();
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem(SAM_REDIRECT_PENDING_KEY, "1");
-  }
-  await signInWithRedirect(auth, provider);
+export function markSamRedirectPending(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(SAM_REDIRECT_PENDING_KEY, "1");
 }
 
 export function clearSamRedirectPending(): void {
@@ -67,4 +68,96 @@ export function clearSamRedirectPending(): void {
 export function isSamRedirectPending(): boolean {
   if (typeof window === "undefined") return false;
   return sessionStorage.getItem(SAM_REDIRECT_PENDING_KEY) === "1";
+}
+
+export function markSamAuthRedirectAttempted(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(SAM_AUTH_REDIRECT_ATTEMPTED_KEY, "1");
+}
+
+export function clearSamAuthRedirectAttempted(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(SAM_AUTH_REDIRECT_ATTEMPTED_KEY);
+}
+
+export function hasSamAuthRedirectAttempted(): boolean {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(SAM_AUTH_REDIRECT_ATTEMPTED_KEY) === "1";
+}
+
+/** 쌤 연동 — 자동 로그인 1회만 시도(루프 방지), 동일 이메일 힌트 */
+export async function signInWithGoogleRedirectForSam(
+  loginEmail?: string | null,
+): Promise<void> {
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  const email = loginEmail?.trim();
+
+  if (email) {
+    provider.setCustomParameters({
+      login_hint: email,
+      prompt: "none",
+    });
+  } else {
+    provider.setCustomParameters({ prompt: "select_account" });
+  }
+
+  markSamRedirectPending();
+  markSamAuthRedirectAttempted();
+  await signInWithRedirect(auth, provider);
+}
+
+export type SamAuthFlowResult = "signed_in" | "redirecting" | "needs_manual";
+
+export async function runSamAuthFlow(loginEmail?: string | null): Promise<SamAuthFlowResult> {
+  const auth = getFirebaseAuth();
+
+  if (auth.currentUser) {
+    clearSamRedirectPending();
+    clearSamAuthRedirectAttempted();
+    return "signed_in";
+  }
+
+  const redirectResult = await completeSamRedirectSignIn();
+  if (redirectResult?.user) {
+    clearSamRedirectPending();
+    clearSamAuthRedirectAttempted();
+    return "signed_in";
+  }
+
+  if (isSamRedirectPending()) {
+    clearSamRedirectPending();
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    if (auth.currentUser) {
+      clearSamAuthRedirectAttempted();
+      return "signed_in";
+    }
+    return "needs_manual";
+  }
+
+  if (hasSamAuthRedirectAttempted()) {
+    return "needs_manual";
+  }
+
+  await signInWithGoogleRedirectForSam(loginEmail);
+  return "redirecting";
+}
+
+export async function signInWithGoogleForSamManual(
+  loginEmail?: string | null,
+): Promise<UserCredential> {
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  const email = loginEmail?.trim();
+  if (email) {
+    provider.setCustomParameters({
+      login_hint: email,
+      prompt: "select_account",
+    });
+  } else {
+    provider.setCustomParameters({ prompt: "select_account" });
+  }
+  clearSamAuthRedirectAttempted();
+  clearSamRedirectPending();
+  return signInWithPopup(auth, provider);
 }

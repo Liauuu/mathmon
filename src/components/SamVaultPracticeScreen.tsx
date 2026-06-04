@@ -4,11 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { User } from "firebase/auth";
 import VaultPracticeSolveScreen from "@/components/VaultPracticeSolveScreen";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
-import {
-  clearSamRedirectPending,
-  completeSamRedirectSignIn,
-  signInWithGoogleRedirectForSam,
-} from "@/lib/firebase";
+import { clearSamAuthRedirectAttempted, runSamAuthFlow } from "@/lib/firebase";
 import { loadVaultById, type ProblemVault } from "@/lib/problem-vaults";
 import type { SamPracticeParams } from "@/lib/sam-integration";
 
@@ -18,6 +14,8 @@ type SamVaultPracticeScreenProps = {
   sam: SamPracticeParams;
 };
 
+type AuthPhase = "checking" | "redirecting" | "manual" | "ready";
+
 export default function SamVaultPracticeScreen({
   user,
   authLoading,
@@ -26,7 +24,9 @@ export default function SamVaultPracticeScreen({
   const [vault, setVault] = useState<ProblemVault | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authBusy, setAuthBusy] = useState(false);
+  const [authPhase, setAuthPhase] = useState<AuthPhase>("checking");
+
+  const accountMatches = Boolean(user && user.uid === sam.studentId);
 
   const loadVault = useCallback(async () => {
     setLoading(true);
@@ -50,75 +50,94 @@ export default function SamVaultPracticeScreen({
   }, [sam.teacherUid, sam.vaultId]);
 
   useEffect(() => {
-    if (!user || user.uid !== sam.studentId) return;
+    if (!accountMatches) return;
+    setAuthPhase("ready");
     void loadVault();
-  }, [user, sam.studentId, loadVault]);
+  }, [accountMatches, loadVault]);
 
   useEffect(() => {
-    if (authLoading || user) return;
+    if (authLoading || accountMatches) return;
+    if (authPhase === "manual" || authPhase === "redirecting") return;
 
     let cancelled = false;
 
-    async function tryAuth() {
-      setAuthBusy(true);
+    async function startSamAuth() {
+      setAuthPhase("checking");
+      setError(null);
+
       try {
-        await completeSamRedirectSignIn();
-        clearSamRedirectPending();
+        const result = await runSamAuthFlow(sam.loginEmail);
+        if (cancelled) return;
+
+        if (result === "redirecting") {
+          setAuthPhase("redirecting");
+          return;
+        }
+
+        setAuthPhase("manual");
       } catch (err) {
         if (!cancelled) {
           console.error(err);
+          setAuthPhase("manual");
+          setError(
+            "자동 로그인에 실패했습니다. 아래 버튼으로 쌤과 같은 구글 계정을 선택해 주세요.",
+          );
         }
-      } finally {
-        if (!cancelled) setAuthBusy(false);
       }
     }
 
-    void tryAuth();
+    void startSamAuth();
     return () => {
       cancelled = true;
     };
-  }, [authLoading, user]);
+  }, [authLoading, accountMatches, authPhase, sam.loginEmail]);
 
   useEffect(() => {
-    if (authLoading || user || authBusy) return;
-    void signInWithGoogleRedirectForSam().catch((err) => {
-      console.error(err);
-      setError("구글 로그인을 시작하지 못했습니다. 아래 버튼으로 다시 시도해 주세요.");
-    });
-  }, [authLoading, user, authBusy]);
+    if (accountMatches) {
+      clearSamAuthRedirectAttempted();
+    }
+  }, [accountMatches]);
 
-  if (authLoading || authBusy) {
+  if (authLoading || authPhase === "checking" || authPhase === "redirecting") {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-gray-400">로그인 확인 중...</p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+        <p className="text-sm text-gray-300">
+          {authPhase === "redirecting"
+            ? "쌤과 같은 구글 계정으로 연결 중..."
+            : "로그인 확인 중..."}
+        </p>
+        {sam.loginEmail ? (
+          <p className="text-xs text-gray-500">{sam.loginEmail}</p>
+        ) : null}
       </div>
     );
   }
 
-  if (!user) {
+  if (!user || !accountMatches) {
+    const emailHint = sam.loginEmail;
+
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
-        <p className="text-center text-sm text-gray-400">
-          쌤 수업 문제 풀기를 위해 구글 로그인이 필요합니다.
-          <br />
-          쌤과 같은 계정으로 로그인해 주세요.
-        </p>
-        <GoogleLoginButton />
-      </div>
-    );
-  }
+        <div className="text-center">
+          <p className="text-sm text-gray-300">
+            쌤 수업 문제 풀기를 위해
+            <br />
+            <span className="font-semibold text-[#a3e635]">쌤에서 쓰던 구글 계정</span>
+            으로 로그인해 주세요.
+          </p>
+          {emailHint ? (
+            <p className="mt-2 text-xs text-gray-500">계정: {emailHint}</p>
+          ) : null}
+          {user && user.uid !== sam.studentId ? (
+            <p className="mt-3 text-xs text-red-400">
+              다른 계정으로 로그인되어 있습니다. 아래에서 쌤과 같은 계정을 선택해 주세요.
+            </p>
+          ) : null}
+        </div>
 
-  if (user.uid !== sam.studentId) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-sm text-red-400">
-          쌤에서 시작한 학생 계정({sam.studentId.slice(0, 8)}…)과
-          현재 로그인({user.uid.slice(0, 8)}…)이 다릅니다.
-        </p>
-        <p className="text-xs text-gray-500">
-          쌤에서 사용한 구글 계정으로 다시 로그인해 주세요.
-        </p>
-        <GoogleLoginButton />
+        <GoogleLoginButton loginEmail={sam.loginEmail} variant="sam" />
+
+        {error ? <p className="max-w-xs text-center text-sm text-red-400">{error}</p> : null}
       </div>
     );
   }
