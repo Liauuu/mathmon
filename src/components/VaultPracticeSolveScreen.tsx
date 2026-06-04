@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import DrawingToolbar from "@/components/DrawingToolbar";
 import MathProblemPreview from "@/components/MathProblemPreview";
-import ProblemDrawingCanvas from "@/components/ProblemDrawingCanvas";
+import ProblemDrawingCanvas, {
+  DEFAULT_PEN_COLOR,
+  DEFAULT_PEN_WIDTH,
+  type DrawingTool,
+  type ProblemDrawingCanvasHandle,
+} from "@/components/ProblemDrawingCanvas";
 import {
   loadVaultProblems,
   saveVaultProblemGrade,
@@ -14,7 +20,6 @@ import {
 type VaultPracticeSolveScreenProps = {
   userId: string;
   vault: ProblemVault;
-  onBack: () => void;
 };
 
 const AUTO_ADVANCE_MS = 700;
@@ -32,7 +37,6 @@ function gradeBadgeClass(status: ProblemGradeStatus): string {
 export default function VaultPracticeSolveScreen({
   userId,
   vault,
-  onBack,
 }: VaultPracticeSolveScreenProps) {
   const [problems, setProblems] = useState<VaultProblem[]>([]);
   const [grades, setGrades] = useState<Record<string, ProblemGradeStatus>>({});
@@ -44,7 +48,14 @@ export default function VaultPracticeSolveScreen({
     null,
   );
   const [animating, setAnimating] = useState(false);
+  const [drawingTool, setDrawingTool] = useState<DrawingTool>("pen");
+  const [strokeColor, setStrokeColor] = useState<string>(DEFAULT_PEN_COLOR);
+  const [penWidth, setPenWidth] = useState(DEFAULT_PEN_WIDTH);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [toolbarColumn, setToolbarColumn] = useState(false);
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<ProblemDrawingCanvasHandle>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -76,6 +87,40 @@ export default function VaultPracticeSolveScreen({
     return () => {
       if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
     };
+  }, []);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === workspaceRef.current);
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setToolbarColumn(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const el = workspaceRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement === el) {
+        await document.exitFullscreen();
+      } else if (!document.fullscreenElement) {
+        await el.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+        await el.requestFullscreen();
+      }
+    } catch {
+      /* Safari / unsupported */
+    }
   }, []);
 
   const count = problems.length;
@@ -135,24 +180,13 @@ export default function VaultPracticeSolveScreen({
         : "animate-[solve-slide-in_0.28s_ease-out]";
 
   return (
-    <div className="relative flex w-full max-w-lg flex-1 flex-col pb-32">
-      <header className="mb-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex shrink-0 items-center gap-1 rounded-xl border border-[#84cc16]/30 bg-[#1f2937]/90 px-3 py-2 text-sm font-medium text-gray-100 transition-colors hover:border-[#84cc16]/55"
-        >
-          <span aria-hidden>⬅️</span>
-          저장소
-        </button>
-        <h2 className="min-w-0 flex-1 truncate text-center text-base font-bold text-[#84cc16]">
-          {vault.name}
-        </h2>
-        <div className="w-[4.5rem] shrink-0" aria-hidden />
-      </header>
+    <div className="relative flex min-h-0 w-full max-w-full flex-1 flex-col pb-32 md:max-w-7xl md:pb-28 lg:max-w-none lg:pb-24">
+      <h2 className="mb-2 shrink-0 truncate text-center text-base font-bold text-[#84cc16] md:text-lg">
+        {vault.name}
+      </h2>
 
       {error ? (
-        <p className="mb-2 text-center text-sm text-red-400">{error}</p>
+        <p className="mb-2 shrink-0 text-center text-sm text-red-400">{error}</p>
       ) : null}
 
       {loading ? (
@@ -160,8 +194,15 @@ export default function VaultPracticeSolveScreen({
       ) : count === 0 ? (
         <p className="text-center text-sm text-gray-400">풀 문항이 없어요.</p>
       ) : (
-        <>
-          <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={workspaceRef}
+          className={`flex min-h-0 flex-1 flex-col gap-2 md:gap-3 ${
+            isFullscreen
+              ? "bg-[#111827] p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+              : ""
+          }`}
+        >
+          <div className="shrink-0 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {problems.map((p, i) => {
               const n = i + 1;
               const active = currentIndex === i;
@@ -194,38 +235,61 @@ export default function VaultPracticeSolveScreen({
             })}
           </div>
 
-          <p className="mb-2 rounded-xl border border-[#84cc16]/35 bg-[#84cc16]/10 px-3 py-2 text-center text-sm font-semibold text-[#d9f99d]">
+          <p className="hidden shrink-0 rounded-xl border border-[#84cc16]/35 bg-[#84cc16]/10 px-3 py-2 text-center text-sm font-semibold text-[#d9f99d] md:block">
             ✍️ 터치펜·손가락으로 문제 위에 바로 풀 수 있어요
           </p>
 
-          <p className="mb-2 px-1 text-xs font-medium text-gray-500">
-            문제 풀이
-          </p>
-
-          <div
-            key={current?.id ?? currentIndex}
-            className={`relative min-h-[22rem] flex-1 overflow-hidden rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] shadow-inner ${slideClass}`}
-          >
-            <div className="pointer-events-none absolute inset-0 z-0 overflow-y-auto px-3 py-3 pb-16">
-              <MathProblemPreview
-                content={current?.problem ?? ""}
-                compact
-                placeholder="문항 내용이 없습니다."
+          <div className="flex min-h-0 flex-1 flex-col gap-2 md:flex-row md:gap-3">
+            <div className="shrink-0 md:w-52 lg:w-56">
+              <DrawingToolbar
+                layout={toolbarColumn ? "column" : "row"}
+                tool={drawingTool}
+                onToolChange={setDrawingTool}
+                strokeColor={strokeColor}
+                onStrokeColorChange={setStrokeColor}
+                penWidth={penWidth}
+                onPenWidthChange={setPenWidth}
+                onClear={() => canvasRef.current?.clear()}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => void toggleFullscreen()}
               />
             </div>
-            <div className="absolute inset-0 z-10 min-h-[22rem]">
-              <ProblemDrawingCanvas
-                key={current?.id}
-                problemId={current?.id ?? "unknown"}
-              />
+
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
+              <p className="shrink-0 px-1 text-xs font-medium text-gray-500">
+                문제 풀이
+              </p>
+
+              <div
+                key={current?.id ?? currentIndex}
+                className={`relative min-h-[min(72dvh,42rem)] flex-1 overflow-hidden rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] shadow-inner md:min-h-[min(68dvh,48rem)] lg:min-h-[min(75dvh,52rem)] ${slideClass}`}
+              >
+                <div className="pointer-events-none absolute inset-0 z-0 overflow-y-auto px-3 py-3">
+                  <MathProblemPreview
+                    content={current?.problem ?? ""}
+                    compact
+                    placeholder="문항 내용이 없습니다."
+                  />
+                </div>
+                <div className="absolute inset-0 z-10">
+                  <ProblemDrawingCanvas
+                    ref={canvasRef}
+                    key={current?.id}
+                    problemId={current?.id ?? "unknown"}
+                    tool={drawingTool}
+                    strokeColor={strokeColor}
+                    penWidth={penWidth}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {answerOpen && current ? (
         <div
-          className="fixed inset-x-0 bottom-[5.5rem] z-40 mx-auto max-w-lg px-4 animate-[solve-answer-in_0.28s_ease-out]"
+          className="fixed inset-x-0 bottom-[5.5rem] z-40 mx-auto w-full max-w-full px-4 animate-[solve-answer-in_0.28s_ease-out] md:max-w-7xl md:px-6 lg:max-w-none"
           role="dialog"
           aria-label="정답"
         >
@@ -238,7 +302,7 @@ export default function VaultPracticeSolveScreen({
         </div>
       ) : null}
 
-      <div className="pointer-events-none fixed bottom-[5.5rem] left-1/2 z-50 flex w-full max-w-md -translate-x-1/2 flex-col items-end gap-2 px-5">
+      <div className="pointer-events-none fixed bottom-[5.5rem] left-1/2 z-50 flex w-full max-w-full -translate-x-1/2 flex-col items-end gap-2 px-4 md:max-w-7xl md:px-6 lg:max-w-none lg:px-8">
         {answerOpen && current && !grades[current.id] ? (
           <div className="pointer-events-auto flex gap-2">
             <button

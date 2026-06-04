@@ -56,7 +56,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#C5FF4D" />
       </head>
       <body className="min-h-full bg-[#111827] font-sans text-white">
-        <div className="mx-auto flex min-h-full w-full max-w-md flex-col shadow-2xl shadow-black/50">
+        <div className="mx-auto flex min-h-full w-full max-w-md flex-col shadow-2xl shadow-black/50 md:max-w-7xl md:shadow-none lg:max-w-full">
           {children}
         </div>
       </body>

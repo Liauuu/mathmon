@@ -16,7 +16,7 @@ export default function BottomNav({
   return (
     <nav
       aria-label="하단 메뉴"
-      className="fixed bottom-0 left-1/2 z-40 flex h-[4.25rem] w-full max-w-md -translate-x-1/2 items-stretch border-t border-[#84cc16]/25 bg-[#111827]/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      className="fixed bottom-0 left-1/2 z-40 flex h-[4.25rem] w-full max-w-md -translate-x-1/2 items-stretch border-t border-[#84cc16]/25 bg-[#111827]/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:max-w-7xl lg:max-w-full"
     >
       <button
         type="button"

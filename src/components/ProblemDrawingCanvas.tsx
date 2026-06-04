@@ -8,6 +8,20 @@ import {
   forwardRef,
 } from "react";
 
+export type DrawingTool = "pen" | "eraser";
+
+export const PEN_COLOR_PRESETS = [
+  { id: "white", label: "흰색", value: "#f3f4f6" },
+  { id: "lime", label: "라임", value: "#84cc16" },
+  { id: "red", label: "빨강", value: "#ef4444" },
+  { id: "blue", label: "파랑", value: "#3b82f6" },
+  { id: "yellow", label: "노랑", value: "#eab308" },
+] as const;
+
+export const DEFAULT_PEN_COLOR = PEN_COLOR_PRESETS[0].value;
+export const DEFAULT_PEN_WIDTH = 3;
+export const ERASER_SIZE = 28;
+
 export type ProblemDrawingCanvasHandle = {
   clear: () => void;
 };
@@ -15,22 +29,44 @@ export type ProblemDrawingCanvasHandle = {
 type ProblemDrawingCanvasProps = {
   problemId: string;
   className?: string;
+  tool?: DrawingTool;
+  strokeColor?: string;
+  penWidth?: number;
 };
-
-const STROKE_COLOR = "#f3f4f6";
-const ERASER_SIZE = 28;
-const PEN_SIZE = 2.5;
 
 const ProblemDrawingCanvas = forwardRef<
   ProblemDrawingCanvasHandle,
   ProblemDrawingCanvasProps
->(function ProblemDrawingCanvas({ problemId, className = "" }, ref) {
+>(function ProblemDrawingCanvas(
+  {
+    problemId,
+    className = "",
+    tool = "pen",
+    strokeColor = DEFAULT_PEN_COLOR,
+    penWidth = DEFAULT_PEN_WIDTH,
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
-  const toolRef = useRef<"pen" | "eraser">("pen");
+  const toolRef = useRef(tool);
+  const strokeColorRef = useRef(strokeColor);
+  const penWidthRef = useRef(penWidth);
   const snapshotsRef = useRef<Map<string, string>>(new Map());
   const activeProblemIdRef = useRef(problemId);
+
+  useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
+
+  useEffect(() => {
+    strokeColorRef.current = strokeColor;
+  }, [strokeColor]);
+
+  useEffect(() => {
+    penWidthRef.current = penWidth;
+  }, [penWidth]);
 
   const getCtx = useCallback(() => {
     const canvas = canvasRef.current;
@@ -117,9 +153,6 @@ const ProblemDrawingCanvas = forwardRef<
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let lastX = 0;
-    let lastY = 0;
-
     function pointFromEvent(e: PointerEvent) {
       const rect = canvas!.getBoundingClientRect();
       return {
@@ -132,8 +165,6 @@ const ProblemDrawingCanvas = forwardRef<
       const ctx = getCtx();
       if (!ctx) return;
       drawingRef.current = true;
-      lastX = x;
-      lastY = y;
       ctx.beginPath();
       ctx.moveTo(x, y);
       if (toolRef.current === "eraser") {
@@ -141,8 +172,8 @@ const ProblemDrawingCanvas = forwardRef<
         ctx.lineWidth = ERASER_SIZE;
       } else {
         ctx.globalCompositeOperation = "source-over";
-        ctx.strokeStyle = STROKE_COLOR;
-        ctx.lineWidth = PEN_SIZE;
+        ctx.strokeStyle = strokeColorRef.current;
+        ctx.lineWidth = penWidthRef.current;
       }
     }
 
@@ -152,8 +183,6 @@ const ProblemDrawingCanvas = forwardRef<
       if (!ctx) return;
       ctx.lineTo(x, y);
       ctx.stroke();
-      lastX = x;
-      lastY = y;
     }
 
     function endStroke() {
@@ -210,33 +239,6 @@ const ProblemDrawingCanvas = forwardRef<
         className="absolute inset-0 touch-none cursor-crosshair"
         aria-label="문제 풀이 드로잉 영역"
       />
-      <div className="pointer-events-auto absolute left-2 top-2 flex gap-1.5">
-        <button
-          type="button"
-          onClick={() => {
-            toolRef.current = "pen";
-          }}
-          className="rounded-lg border border-[#84cc16]/40 bg-[#111827]/90 px-2.5 py-1 text-xs font-medium text-[#a3e635] shadow-sm backdrop-blur-sm"
-        >
-          ✏️ 펜
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            toolRef.current = "eraser";
-          }}
-          className="rounded-lg border border-[#84cc16]/25 bg-[#111827]/90 px-2.5 py-1 text-xs font-medium text-gray-300 shadow-sm backdrop-blur-sm"
-        >
-          🧽 지우개
-        </button>
-        <button
-          type="button"
-          onClick={clearCanvas}
-          className="rounded-lg border border-red-500/30 bg-[#111827]/90 px-2.5 py-1 text-xs font-medium text-red-300 shadow-sm backdrop-blur-sm"
-        >
-          전체 지우기
-        </button>
-      </div>
     </div>
   );
 });

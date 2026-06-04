@@ -45,7 +45,13 @@ export default function HomeClient() {
 
   return (
     <>
-      <div className="flex w-full flex-1 flex-col items-center justify-center pb-24 pt-4">
+      <div
+        className={`flex w-full flex-1 flex-col pb-24 pt-4 ${
+          tab === "storage"
+            ? "min-h-0 items-stretch justify-start px-2 md:px-4"
+            : "items-center justify-center"
+        }`}
+      >
         {tab === "home" ? (
           <MathProblemUploadButton key={homeResetKey} userId={user.uid} />
         ) : (
