@@ -1,0 +1,18 @@
+{
+  "name": "매스몬",
+  "short_name": "매스몬",
+  "description": "AI 수학 문제 및 연습문제 생성 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#C5FF4D",
+  "icons": [
+    {
+      "src": "/icon-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -86,6 +86,8 @@ export function getVaultItemCount(vault: ProblemVault): number {
   return vault.problemIds.length;
 }
 
+export type ProblemGradeStatus = "correct" | "incorrect";
+
 export type VaultProblem = {
   id: string;
   problem: string;
@@ -93,7 +95,14 @@ export type VaultProblem = {
   /** 쌍둥이 3문항 세트 안의 위치(0–2). 전역 표시 순서는 vault.problemIds 로 관리 */
   index: number;
   savedAt: number;
+  gradeStatus?: ProblemGradeStatus;
 };
+
+function parseGradeStatus(data: DocumentData): ProblemGradeStatus | undefined {
+  const g = data.gradeStatus;
+  if (g === "correct" || g === "incorrect") return g;
+  return undefined;
+}
 
 function problemFromDoc(id: string, data: DocumentData): VaultProblem {
   const savedAt = data.savedAt;
@@ -106,7 +115,20 @@ function problemFromDoc(id: string, data: DocumentData): VaultProblem {
       typeof savedAt === "number"
         ? savedAt
         : savedAt?.toMillis?.() ?? 0,
+    gradeStatus: parseGradeStatus(data),
   };
+}
+
+export async function saveVaultProblemGrade(
+  userId: string,
+  vaultId: string,
+  problemId: string,
+  gradeStatus: ProblemGradeStatus,
+): Promise<void> {
+  await updateDoc(
+    doc(vaultProblemsCollection(userId, vaultId), problemId),
+    { gradeStatus },
+  );
 }
 
 /** vault.problemIds 끝이 최신 저장 → 표시는 역순(최신이 위) */

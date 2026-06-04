@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,7 +14,25 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MathMon | 매스몬",
-  description: "슈렉 늪지대에서 시작하는 수학 몬스터 배틀",
+  description: "AI 수학 문제 및 연습문제 생성 플랫폼",
+  applicationName: "매스몬",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "매스몬",
+  },
+  icons: {
+    icon: [{ url: "/icon-512.webp", sizes: "512x512", type: "image/webp" }],
+    apple: [{ url: "/icon-512.webp", sizes: "512x512", type: "image/webp" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#C5FF4D",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -27,6 +45,16 @@ export default function RootLayout({
       lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
+        <link rel="apple-touch-icon" href="/icon-512.webp" />
+        <meta name="theme-color" content="#C5FF4D" />
+      </head>
       <body className="min-h-full bg-[#111827] font-sans text-white">
         <div className="mx-auto flex min-h-full w-full max-w-md flex-col shadow-2xl shadow-black/50">
           {children}

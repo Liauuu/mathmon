@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import CreateVaultModal from "@/components/CreateVaultModal";
 import VaultDetailScreen from "@/components/VaultDetailScreen";
-import VaultSolvePlaceholder from "@/components/VaultSolvePlaceholder";
+import VaultPracticeSolveScreen from "@/components/VaultPracticeSolveScreen";
 import {
   createVault,
   deleteVault,
@@ -111,8 +111,9 @@ export default function ProblemStorageScreen({
 
   if (view === "solve" && selectedVault) {
     return (
-      <VaultSolvePlaceholder
-        vaultName={selectedVault.name}
+      <VaultPracticeSolveScreen
+        userId={userId}
+        vault={selectedVault}
         onBack={() => setView("detail")}
       />
     );
