@@ -31,7 +31,7 @@ export default function MathProblemPreview({
 
   return (
     <div
-      className={`math-problem-preview w-full rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] px-4 py-4 text-sm leading-relaxed text-gray-100 ${compact ? "min-h-[8rem]" : "min-h-[12rem]"}`}
+      className={`math-problem-preview w-full select-none rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] px-4 py-4 text-sm leading-relaxed text-gray-100 ${compact ? "min-h-[8rem]" : "min-h-[12rem]"}`}
       aria-live="polite"
       aria-busy={isProcessing}
     >

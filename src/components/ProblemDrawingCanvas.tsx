@@ -150,8 +150,25 @@ const ProblemDrawingCanvas = forwardRef<
   }, [problemId, resizeCanvas]);
 
   useEffect(() => {
+    const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!container || !canvas) return;
+
+    function blockBrowserSelection(e: Event) {
+      e.preventDefault();
+    }
+
+    function blockTouchScroll(e: TouchEvent) {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+      }
+    }
+
+    container.addEventListener("selectstart", blockBrowserSelection);
+    container.addEventListener("dragstart", blockBrowserSelection);
+    container.addEventListener("contextmenu", blockBrowserSelection);
+    container.addEventListener("touchstart", blockTouchScroll, { passive: false });
+    container.addEventListener("touchmove", blockTouchScroll, { passive: false });
 
     function pointFromEvent(e: PointerEvent) {
       const rect = canvas!.getBoundingClientRect();
@@ -196,6 +213,7 @@ const ProblemDrawingCanvas = forwardRef<
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 0 && e.pointerType === "mouse") return;
       e.preventDefault();
+      e.stopPropagation();
       canvas!.setPointerCapture(e.pointerId);
       const { x, y } = pointFromEvent(e);
       beginStroke(x, y);
@@ -225,6 +243,11 @@ const ProblemDrawingCanvas = forwardRef<
     canvas.addEventListener("pointercancel", onPointerUp);
 
     return () => {
+      container.removeEventListener("selectstart", blockBrowserSelection);
+      container.removeEventListener("dragstart", blockBrowserSelection);
+      container.removeEventListener("contextmenu", blockBrowserSelection);
+      container.removeEventListener("touchstart", blockTouchScroll);
+      container.removeEventListener("touchmove", blockTouchScroll);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -233,10 +256,13 @@ const ProblemDrawingCanvas = forwardRef<
   }, [getCtx, persistSnapshot]);
 
   return (
-    <div ref={containerRef} className={`relative h-full w-full ${className}`}>
+    <div
+      ref={containerRef}
+      className={`problem-drawing-surface relative h-full w-full select-none touch-none overscroll-none ${className}`}
+    >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 touch-none cursor-crosshair"
+        className="absolute inset-0 h-full w-full touch-none cursor-crosshair select-none"
         aria-label="문제 풀이 드로잉 영역"
       />
     </div>

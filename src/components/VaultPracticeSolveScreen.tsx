@@ -354,16 +354,16 @@ export default function VaultPracticeSolveScreen({
 
               <div
                 key={current?.id ?? currentIndex}
-                className={`relative min-h-[min(72dvh,42rem)] flex-1 overflow-hidden rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] shadow-inner md:min-h-[min(68dvh,48rem)] lg:min-h-[min(75dvh,52rem)] ${slideClass}`}
+                className={`problem-solve-board relative min-h-[min(72dvh,42rem)] flex-1 overflow-hidden rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] shadow-inner select-none touch-none overscroll-none md:min-h-[min(68dvh,48rem)] lg:min-h-[min(75dvh,52rem)] ${slideClass}`}
               >
-                <div className="pointer-events-none absolute inset-0 z-0 overflow-y-auto px-3 py-3">
+                <div className="pointer-events-none absolute inset-0 z-0 overflow-y-auto px-3 py-3 select-none">
                   <MathProblemPreview
                     content={current?.problem ?? ""}
                     compact
                     placeholder="문항 내용이 없습니다."
                   />
                 </div>
-                <div className="absolute inset-0 z-10">
+                <div className="absolute inset-0 z-10 touch-none select-none">
                   <ProblemDrawingCanvas
                     ref={canvasRef}
                     key={current?.id}
