@@ -19,6 +19,20 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* 마크다운 본문 — AI 줄바꿈·소문항 단락 유지 */
+.math-problem-preview__body {
+  white-space: pre-wrap;
+}
+
+.math-problem-preview__body p {
+  white-space: pre-wrap;
+  margin-bottom: 0.75rem;
+}
+
+.math-problem-preview__body p:last-child {
+  margin-bottom: 0;
+}
+
 /* KaTeX — 다크 테마 수식 미리보기 */
 .math-problem-preview .katex {
   color: #f3f4f6;

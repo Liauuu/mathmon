@@ -21,6 +21,18 @@ function wrapInlineMath(inner: string): string {
   return ` $ ${body} $ `;
 }
 
+/** (2), (3) 등 소문항이 한 줄에 붙는 경우 마크다운 단락 줄바꿈으로 분리 */
+export function ensureSubQuestionLineBreaks(text: string): string {
+  return text
+    .replace(/\$\s+\((\d+)\)/g, "$\n\n($1)")
+    .replace(/([^\n])\s+\(([2-9])\)/g, "$1\n\n($2)");
+}
+
+/** remark-math가 단일 \\n을 무시하므로 단락 구분(\\n\\n)으로 확장 */
+function expandSingleNewlines(text: string): string {
+  return text.replace(/(?<!\n)\n(?!\n)/g, "\n\n");
+}
+
 /**
  * remark-math / KaTeX가 놓치기 쉬운 $...$ 구간을 공백 패딩·백슬래시 정리.
  */
@@ -28,6 +40,8 @@ export function normalizeMathMarkdown(text: string): string {
   if (!text.trim()) return text;
 
   let result = repairJsonLatexEscapes(text);
+  result = ensureSubQuestionLineBreaks(result);
+  result = expandSingleNewlines(result);
 
   result = result.replace(/\$\$([\s\S]+?)\$\$/g, (_, inner: string) => {
     const body = fixMathInnerBackslashes(inner.trim());

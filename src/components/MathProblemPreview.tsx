@@ -40,7 +40,7 @@ export default function MathProblemPreview({
       ) : showProcessingPlaceholder ? (
         <p className="text-center text-[#84cc16]/80">{processingPlaceholder}</p>
       ) : (
-        <article className="math-problem-preview__body prose-math">
+        <article className="math-problem-preview__body prose-math whitespace-pre-wrap">
           <ReactMarkdown
             remarkPlugins={[remarkMath]}
             rehypePlugins={[
