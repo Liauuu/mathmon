@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { useSearchParams } from "next/navigation";
 import BottomNav, { type AppTab } from "@/components/BottomNav";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 import MathProblemUploadButton from "@/components/MathProblemUploadButton";
 import ProblemStorageScreen from "@/components/ProblemStorageScreen";
-import { getFirebaseAuth } from "@/lib/firebase";
+import SamVaultPracticeScreen from "@/components/SamVaultPracticeScreen";
+import { clearSamRedirectPending, getFirebaseAuth } from "@/lib/firebase";
+import { parseSamPracticeParams } from "@/lib/sam-integration";
 
-export default function HomeClient() {
+function HomeClientContent() {
+  const searchParams = useSearchParams();
+  const sam = parseSamPracticeParams(searchParams.toString());
+
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState<AppTab>("home");
@@ -19,6 +25,7 @@ export default function HomeClient() {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+      if (currentUser) clearSamRedirectPending();
     });
     return unsubscribe;
   }, []);
@@ -31,6 +38,14 @@ export default function HomeClient() {
   function goStorage() {
     setTab("storage");
     setStorageMountKey((k) => k + 1);
+  }
+
+  if (sam) {
+    return (
+      <div className="flex min-h-0 w-full flex-1 flex-col px-2 pt-4 md:px-4">
+        <SamVaultPracticeScreen user={user} authLoading={authLoading} sam={sam} />
+      </div>
+    );
   }
 
   if (authLoading) {
@@ -61,17 +76,24 @@ export default function HomeClient() {
         {tab === "home" ? (
           <MathProblemUploadButton key={homeResetKey} userId={user.uid} />
         ) : (
-          <ProblemStorageScreen
-            key={storageMountKey}
-            userId={user.uid}
-          />
+          <ProblemStorageScreen key={storageMountKey} userId={user.uid} />
         )}
       </div>
-      <BottomNav
-        activeTab={tab}
-        onHome={goHome}
-        onStorage={goStorage}
-      />
+      <BottomNav activeTab={tab} onHome={goHome} onStorage={goStorage} />
     </>
+  );
+}
+
+export default function HomeClient() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-gray-400">불러오는 중...</p>
+        </div>
+      }
+    >
+      <HomeClientContent />
+    </Suspense>
   );
 }

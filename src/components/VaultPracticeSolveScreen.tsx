@@ -21,10 +21,22 @@ import {
   type ProblemVault,
   type VaultProblem,
 } from "@/lib/problem-vaults";
+import {
+  buildSamLectureResumeUrl,
+  type SamPracticeParams,
+} from "@/lib/sam-integration";
+import { syncSamWrongAnswerFromVault } from "@/lib/sam-wrong-answers";
+import {
+  loadStudentVaultGrades,
+  saveStudentVaultProblemGrade,
+} from "@/lib/student-vault-practice";
 
 type VaultPracticeSolveScreenProps = {
-  userId: string;
+  vaultOwnerId: string;
   vault: ProblemVault;
+  sam?: SamPracticeParams;
+  hideBottomNav?: boolean;
+  onFinish?: () => void;
 };
 
 const AUTO_ADVANCE_MS = 700;
@@ -40,9 +52,12 @@ function gradeBadgeClass(status: ProblemGradeStatus): string {
 }
 
 export default function VaultPracticeSolveScreen({
-  userId,
+  vaultOwnerId,
   vault,
+  sam,
+  onFinish,
 }: VaultPracticeSolveScreenProps) {
+  const isSamMode = Boolean(sam);
   const [problems, setProblems] = useState<VaultProblem[]>([]);
   const [grades, setGrades] = useState<Record<string, ProblemGradeStatus>>({});
   const [loading, setLoading] = useState(true);
@@ -66,11 +81,23 @@ export default function VaultPracticeSolveScreen({
     setLoading(true);
     setError(null);
     try {
-      const list = await loadVaultProblems(userId, vault.id, vault.problemIds);
+      const list = await loadVaultProblems(
+        vaultOwnerId,
+        vault.id,
+        vault.problemIds,
+      );
       setProblems(list);
       const initial: Record<string, ProblemGradeStatus> = {};
-      for (const p of list) {
-        if (p.gradeStatus) initial[p.id] = p.gradeStatus;
+      if (isSamMode && sam) {
+        const studentGrades = await loadStudentVaultGrades(
+          sam.studentId,
+          list.map((p) => p.id),
+        );
+        Object.assign(initial, studentGrades);
+      } else {
+        for (const p of list) {
+          if (p.gradeStatus) initial[p.id] = p.gradeStatus;
+        }
       }
       setGrades(initial);
       setCurrentIndex((i) => (list.length === 0 ? 0 : Math.min(i, list.length - 1)));
@@ -82,7 +109,7 @@ export default function VaultPracticeSolveScreen({
     } finally {
       setLoading(false);
     }
-  }, [userId, vault.id, vault.problemIds]);
+  }, [vaultOwnerId, vault.id, vault.problemIds, isSamMode, sam]);
 
   useEffect(() => {
     void refresh();
@@ -156,6 +183,25 @@ export default function VaultPracticeSolveScreen({
     goToIndex(index, index > currentIndex ? "left" : "right");
   }
 
+  function handleFinishPractice() {
+    if (isSamMode && sam) {
+      const returnUrl = buildSamLectureResumeUrl(sam);
+      if (window.opener && !window.opener.closed) {
+        try {
+          window.opener.location.href = returnUrl;
+        } catch {
+          window.location.assign(returnUrl);
+        }
+        window.close();
+        return;
+      }
+      window.location.assign(returnUrl);
+      return;
+    }
+
+    onFinish?.();
+  }
+
   async function handleGrade(status: ProblemGradeStatus) {
     if (!current || grades[current.id]) return;
 
@@ -163,7 +209,30 @@ export default function VaultPracticeSolveScreen({
     setAnswerOpen(false);
 
     try {
-      await saveVaultProblemGrade(userId, vault.id, current.id, status);
+      if (isSamMode && sam) {
+        await saveStudentVaultProblemGrade(
+          sam.studentId,
+          sam.teacherUid,
+          sam.vaultId,
+          current.id,
+          status,
+        );
+        if (status === "incorrect") {
+          await syncSamWrongAnswerFromVault({
+            sam,
+            vaultProblemId: current.id,
+            problemText: current.problem,
+            answerText: current.answer,
+          });
+        }
+      } else {
+        await saveVaultProblemGrade(
+          vaultOwnerId,
+          vault.id,
+          current.id,
+          status,
+        );
+      }
     } catch (err) {
       setGrades((prev) => {
         const next = { ...prev };
@@ -194,9 +263,19 @@ export default function VaultPracticeSolveScreen({
 
   return (
     <div className="relative flex min-h-0 w-full max-w-full flex-1 flex-col pb-32 md:max-w-7xl md:pb-28 lg:max-w-none lg:pb-24">
-      <h2 className="mb-2 shrink-0 truncate text-center text-base font-bold text-[#84cc16] md:text-lg">
-        {vault.name}
-      </h2>
+      <div className="mb-2 flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={handleFinishPractice}
+          className="shrink-0 rounded-xl border border-[#84cc16]/35 bg-[#1f2937] px-3 py-2 text-sm font-semibold text-[#a3e635] transition-colors hover:border-[#84cc16] hover:bg-[#84cc16]/10"
+        >
+          {isSamMode ? "← 쌤으로 돌아가기" : "← 저장소로"}
+        </button>
+        <h2 className="min-w-0 flex-1 truncate text-center text-base font-bold text-[#84cc16] md:text-lg">
+          {vault.name}
+          {isSamMode ? " · 쌤 수업" : ""}
+        </h2>
+      </div>
 
       {error ? (
         <p className="mb-2 shrink-0 text-center text-sm text-red-400">{error}</p>

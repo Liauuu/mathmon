@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -59,6 +60,15 @@ export async function loadVaults(userId: string): Promise<ProblemVault[]> {
   const q = query(vaultsCollection(userId), orderBy("createdAt", "desc"));
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => vaultFromDoc(d.id, d.data()));
+}
+
+export async function loadVaultById(
+  userId: string,
+  vaultId: string,
+): Promise<ProblemVault | null> {
+  const snap = await getDoc(vaultDoc(userId, vaultId));
+  if (!snap.exists()) return null;
+  return vaultFromDoc(snap.id, snap.data());
 }
 
 export async function createVault(

@@ -111,7 +111,11 @@ export default function ProblemStorageScreen({
 
   if (view === "solve" && selectedVault) {
     return (
-      <VaultPracticeSolveScreen userId={userId} vault={selectedVault} />
+      <VaultPracticeSolveScreen
+        vaultOwnerId={userId}
+        vault={selectedVault}
+        onFinish={() => setView("detail")}
+      />
     );
   }
 
