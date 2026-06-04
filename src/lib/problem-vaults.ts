@@ -1,12 +1,15 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
+  updateDoc,
+  writeBatch,
   type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase";
@@ -62,10 +65,7 @@ export async function createVault(
   userId: string,
   name: string,
 ): Promise<ProblemVault> {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    throw new Error("저장소 이름을 입력해 주세요.");
-  }
+  const trimmed = assertVaultName(name);
 
   const createdAt = Date.now();
   const ref = await addDoc(vaultsCollection(userId), {
@@ -84,6 +84,45 @@ export async function createVault(
 
 export function getVaultItemCount(vault: ProblemVault): number {
   return vault.problemIds.length;
+}
+
+function assertVaultName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("저장소 이름을 입력해 주세요.");
+  }
+  return trimmed;
+}
+
+export async function updateVaultName(
+  userId: string,
+  vaultId: string,
+  name: string,
+): Promise<void> {
+  const trimmed = assertVaultName(name);
+  await updateDoc(vaultDoc(userId, vaultId), { name: trimmed });
+}
+
+/** 유저 vault·하위 problems만 삭제. ai_training_data는 건드리지 않음. */
+export async function deleteVault(
+  userId: string,
+  vaultId: string,
+): Promise<void> {
+  const db = getFirebaseFirestore();
+  const problemsSnap = await getDocs(
+    vaultProblemsCollection(userId, vaultId),
+  );
+
+  const BATCH_LIMIT = 500;
+  for (let i = 0; i < problemsSnap.docs.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    for (const problemDoc of problemsSnap.docs.slice(i, i + BATCH_LIMIT)) {
+      batch.delete(problemDoc.ref);
+    }
+    await batch.commit();
+  }
+
+  await deleteDoc(vaultDoc(userId, vaultId));
 }
 
 export type SaveTwinProblemsInput = {

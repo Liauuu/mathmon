@@ -90,22 +90,43 @@ export default function TwinResultSection({
         </div>
       ) : null}
 
-      {canSave ? (
-        <div className="flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSaveModalOpen(true)}
-            className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#1f2937] px-5 text-sm font-bold text-[#a3e635] shadow-md shadow-[#84cc16]/15 transition-all hover:border-[#84cc16] hover:bg-[#84cc16]/10 hover:text-[#bef264] active:scale-[0.98]"
-          >
-            문제 저장
-          </button>
-          {savedNotice ? (
-            <p className="text-center text-xs text-[#a3e635]">
-              저장이 완료되었습니다.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex flex-col items-center gap-3">
+        {canSave ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(true)}
+              className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#1f2937] px-5 text-sm font-bold text-[#a3e635] shadow-md shadow-[#84cc16]/15 transition-all hover:border-[#84cc16] hover:bg-[#84cc16]/10 hover:text-[#bef264] active:scale-[0.98]"
+            >
+              문제 저장
+            </button>
+            {savedNotice ? (
+              <p className="text-center text-xs text-[#a3e635]">
+                저장이 완료되었습니다.
+              </p>
+            ) : null}
+          </>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => {
+            setSavedNotice(false);
+            onGenerateMore();
+          }}
+          disabled={!canGenerateMore}
+          className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#84cc16]/90 px-5 text-sm font-bold text-[#111827] shadow-md shadow-[#84cc16]/25 transition-all hover:bg-[#a3e635] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          같은 유형 문제 더 만들기 🔄
+        </button>
+        <button
+          type="button"
+          onClick={onResetToHome}
+          disabled={isProcessing}
+          className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/40 bg-[#1f2937] px-5 text-sm font-bold text-[#a3e635] shadow-md shadow-[#84cc16]/15 transition-all hover:border-[#84cc16] hover:bg-[#84cc16]/10 hover:text-[#bef264] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          처음 화면으로 돌아가기 🏠
+        </button>
+      </div>
 
       <h2 className="text-center text-lg font-bold tracking-tight text-[#84cc16]">
         연습문제
@@ -151,28 +172,6 @@ export default function TwinResultSection({
           </div>
         );
       })}
-
-      <div className="flex flex-col items-center gap-3 pt-2">
-        <button
-          type="button"
-          onClick={() => {
-            setSavedNotice(false);
-            onGenerateMore();
-          }}
-          disabled={!canGenerateMore}
-          className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#84cc16]/90 px-5 text-sm font-bold text-[#111827] shadow-md shadow-[#84cc16]/25 transition-all hover:bg-[#a3e635] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          같은 유형 문제 더 만들기 🔄
-        </button>
-        <button
-          type="button"
-          onClick={onResetToHome}
-          disabled={isProcessing}
-          className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/40 bg-[#1f2937] px-5 text-sm font-bold text-[#a3e635] shadow-md shadow-[#84cc16]/15 transition-all hover:border-[#84cc16] hover:bg-[#84cc16]/10 hover:text-[#bef264] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          처음 화면으로 돌아가기 🏠
-        </button>
-      </div>
 
       <SaveProblemsModal
         open={saveModalOpen}

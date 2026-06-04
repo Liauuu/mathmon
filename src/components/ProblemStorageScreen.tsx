@@ -4,10 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import CreateVaultModal from "@/components/CreateVaultModal";
 import {
   createVault,
+  deleteVault,
   getVaultItemCount,
   loadVaults,
+  updateVaultName,
   type ProblemVault,
 } from "@/lib/problem-vaults";
+
+const DELETE_VAULT_CONFIRM =
+  "이 저장소와 포함된 문항들이 모두 삭제됩니다. 정말 삭제하시겠습니까?";
 
 type ProblemStorageScreenProps = {
   userId: string;
@@ -19,6 +24,9 @@ export default function ProblemStorageScreen({
   const [vaults, setVaults] = useState<ProblemVault[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [renameVault, setRenameVault] = useState<ProblemVault | null>(null);
+  const [busyVaultId, setBusyVaultId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -37,8 +45,50 @@ export default function ProblemStorageScreen({
   }, [refresh]);
 
   async function handleCreate(name: string) {
-    await createVault(userId, name);
-    await refresh();
+    setActionError(null);
+    try {
+      await createVault(userId, name);
+      await refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "저장소를 만들지 못했습니다.",
+      );
+    }
+  }
+
+  async function handleRename(name: string) {
+    if (!renameVault) return;
+    setBusyVaultId(renameVault.id);
+    setActionError(null);
+    try {
+      await updateVaultName(userId, renameVault.id, name);
+      setRenameVault(null);
+      await refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "이름을 수정하지 못했습니다.",
+      );
+    } finally {
+      setBusyVaultId(null);
+    }
+  }
+
+  async function handleDelete(vault: ProblemVault) {
+    if (busyVaultId) return;
+    if (!window.confirm(DELETE_VAULT_CONFIRM)) return;
+
+    setBusyVaultId(vault.id);
+    setActionError(null);
+    try {
+      await deleteVault(userId, vault.id);
+      await refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "저장소를 삭제하지 못했습니다.",
+      );
+    } finally {
+      setBusyVaultId(null);
+    }
   }
 
   return (
@@ -46,6 +96,10 @@ export default function ProblemStorageScreen({
       <h2 className="mb-4 text-center text-lg font-bold text-[#84cc16]">
         문제 저장소
       </h2>
+
+      {actionError ? (
+        <p className="mb-3 text-center text-sm text-red-400">{actionError}</p>
+      ) : null}
 
       {loading ? (
         <p className="text-center text-sm text-gray-400">불러오는 중...</p>
@@ -62,19 +116,39 @@ export default function ProblemStorageScreen({
         <ul className="flex flex-col gap-3">
           {vaults.map((vault) => {
             const count = getVaultItemCount(vault);
+            const isBusy = busyVaultId === vault.id;
             return (
               <li key={vault.id}>
-                <button
-                  type="button"
-                  className="flex w-full flex-col gap-1 rounded-2xl border border-[#84cc16]/30 bg-[#1f2937]/90 px-4 py-4 text-left shadow-md shadow-[#84cc16]/5 transition-colors hover:border-[#84cc16]/55 hover:bg-[#1f2937] sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="font-semibold text-gray-100">
-                    {vault.name}
-                  </span>
-                  <span className="text-sm font-medium text-[#a3e635]">
-                    ({count}문항)
-                  </span>
-                </button>
+                <div className="relative rounded-2xl border border-[#84cc16]/30 bg-[#1f2937]/90 px-4 py-4 shadow-md shadow-[#84cc16]/5 transition-colors hover:border-[#84cc16]/55 hover:bg-[#1f2937]">
+                  <div className="absolute right-3 top-3 flex gap-1.5">
+                    <button
+                      type="button"
+                      aria-label={`${vault.name} 이름 수정`}
+                      disabled={isBusy}
+                      onClick={() => setRenameVault(vault)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#84cc16]/25 bg-[#111827]/80 text-sm transition-colors hover:border-[#84cc16]/50 hover:bg-[#84cc16]/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${vault.name} 삭제`}
+                      disabled={isBusy}
+                      onClick={() => void handleDelete(vault)}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/25 bg-[#111827]/80 text-sm transition-colors hover:border-red-400/50 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-1 pr-20 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="font-semibold text-gray-100">
+                      {vault.name}
+                    </span>
+                    <span className="text-sm font-medium text-[#a3e635]">
+                      ({count}문항)
+                    </span>
+                  </div>
+                </div>
               </li>
             );
           })}
@@ -97,6 +171,16 @@ export default function ProblemStorageScreen({
         onClose={() => setModalOpen(false)}
         onCreate={(name) => {
           void handleCreate(name);
+        }}
+      />
+
+      <CreateVaultModal
+        open={renameVault !== null}
+        variant="rename"
+        initialName={renameVault?.name ?? ""}
+        onClose={() => setRenameVault(null)}
+        onCreate={(name) => {
+          void handleRename(name);
         }}
       />
     </div>

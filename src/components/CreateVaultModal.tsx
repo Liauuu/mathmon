@@ -6,24 +6,29 @@ type CreateVaultModalProps = {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string) => void;
+  variant?: "create" | "rename";
+  initialName?: string;
 };
 
 export default function CreateVaultModal({
   open,
   onClose,
   onCreate,
+  variant = "create",
+  initialName = "",
 }: CreateVaultModalProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const isRename = variant === "rename";
 
   useEffect(() => {
     if (!open) return;
-    setName("");
+    setName(isRename ? initialName : "");
     setError(null);
     const t = window.setTimeout(() => inputRef.current?.focus(), 50);
     return () => window.clearTimeout(t);
-  }, [open]);
+  }, [open, isRename, initialName]);
 
   if (!open) return null;
 
@@ -55,10 +60,12 @@ export default function CreateVaultModal({
           id="create-vault-title"
           className="text-center text-base font-bold text-[#84cc16]"
         >
-          새로운 저장소
+          {isRename ? "저장소 이름 수정" : "새로운 저장소"}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-400">
-          새로운 저장소 이름을 입력하세요
+          {isRename
+            ? "변경할 저장소 이름을 입력하세요"
+            : "새로운 저장소 이름을 입력하세요"}
         </p>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3">
           <input
@@ -88,7 +95,7 @@ export default function CreateVaultModal({
               type="submit"
               className="flex-1 rounded-xl bg-[#84cc16] py-2.5 text-sm font-bold text-[#111827] transition-colors hover:bg-[#a3e635]"
             >
-              만들기
+              {isRename ? "저장" : "만들기"}
             </button>
           </div>
         </form>
