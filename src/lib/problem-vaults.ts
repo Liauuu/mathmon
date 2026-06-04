@@ -86,6 +86,79 @@ export function getVaultItemCount(vault: ProblemVault): number {
   return vault.problemIds.length;
 }
 
+export type VaultProblem = {
+  id: string;
+  problem: string;
+  answer: string;
+  /** 쌍둥이 3문항 세트 안의 위치(0–2). 전역 표시 순서는 vault.problemIds 로 관리 */
+  index: number;
+  savedAt: number;
+};
+
+function problemFromDoc(id: string, data: DocumentData): VaultProblem {
+  const savedAt = data.savedAt;
+  return {
+    id,
+    problem: typeof data.problem === "string" ? data.problem : "",
+    answer: typeof data.answer === "string" ? data.answer : "",
+    index: typeof data.index === "number" ? data.index : 0,
+    savedAt:
+      typeof savedAt === "number"
+        ? savedAt
+        : savedAt?.toMillis?.() ?? 0,
+  };
+}
+
+/** vault.problemIds 끝이 최신 저장 → 표시는 역순(최신이 위) */
+export function vaultProblemIdsNewestFirst(problemIds: string[]): string[] {
+  return [...problemIds].reverse();
+}
+
+export async function loadVaultProblems(
+  userId: string,
+  vaultId: string,
+  problemIds: string[],
+): Promise<VaultProblem[]> {
+  if (problemIds.length === 0) return [];
+
+  const orderedIds = vaultProblemIdsNewestFirst(problemIds);
+  const snapshot = await getDocs(vaultProblemsCollection(userId, vaultId));
+  const byId = new Map(
+    snapshot.docs.map((d) => [d.id, problemFromDoc(d.id, d.data())]),
+  );
+
+  return orderedIds
+    .map((id) => byId.get(id))
+    .filter((p): p is VaultProblem => p !== undefined);
+}
+
+/**
+ * 표시 목록(최신순)에서 인접 문항 순서를 바꾸고 vault.problemIds 에 반영.
+ * Firestore `index`(0–2)는 세트 내부용이라 건드리지 않음.
+ */
+export async function swapVaultProblemsInDisplayOrder(
+  userId: string,
+  vaultId: string,
+  problemIds: string[],
+  displayIndex: number,
+  direction: "up" | "down",
+): Promise<string[]> {
+  const displayIds = vaultProblemIdsNewestFirst(problemIds);
+  const swapWith = direction === "up" ? displayIndex - 1 : displayIndex + 1;
+  if (swapWith < 0 || swapWith >= displayIds.length) {
+    return problemIds;
+  }
+
+  [displayIds[displayIndex], displayIds[swapWith]] = [
+    displayIds[swapWith],
+    displayIds[displayIndex],
+  ];
+
+  const newProblemIds = [...displayIds].reverse();
+  await updateDoc(vaultDoc(userId, vaultId), { problemIds: newProblemIds });
+  return newProblemIds;
+}
+
 function assertVaultName(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) {

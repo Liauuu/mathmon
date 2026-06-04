@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import CreateVaultModal from "@/components/CreateVaultModal";
+import VaultDetailScreen from "@/components/VaultDetailScreen";
+import VaultSolvePlaceholder from "@/components/VaultSolvePlaceholder";
 import {
   createVault,
   deleteVault,
@@ -10,6 +12,8 @@ import {
   updateVaultName,
   type ProblemVault,
 } from "@/lib/problem-vaults";
+
+type StorageView = "list" | "detail" | "solve";
 
 const DELETE_VAULT_CONFIRM =
   "이 저장소와 포함된 문항들이 모두 삭제됩니다. 정말 삭제하시겠습니까?";
@@ -23,6 +27,8 @@ export default function ProblemStorageScreen({
 }: ProblemStorageScreenProps) {
   const [vaults, setVaults] = useState<ProblemVault[]>([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<StorageView>("list");
+  const [selectedVault, setSelectedVault] = useState<ProblemVault | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [renameVault, setRenameVault] = useState<ProblemVault | null>(null);
   const [busyVaultId, setBusyVaultId] = useState<string | null>(null);
@@ -91,6 +97,42 @@ export default function ProblemStorageScreen({
     }
   }
 
+  function openVault(vault: ProblemVault) {
+    setSelectedVault(vault);
+    setView("detail");
+  }
+
+  function syncVaultInList(updated: ProblemVault) {
+    setSelectedVault(updated);
+    setVaults((prev) =>
+      prev.map((v) => (v.id === updated.id ? updated : v)),
+    );
+  }
+
+  if (view === "solve" && selectedVault) {
+    return (
+      <VaultSolvePlaceholder
+        vaultName={selectedVault.name}
+        onBack={() => setView("detail")}
+      />
+    );
+  }
+
+  if (view === "detail" && selectedVault) {
+    return (
+      <VaultDetailScreen
+        userId={userId}
+        vault={selectedVault}
+        onBack={() => {
+          setView("list");
+          setSelectedVault(null);
+        }}
+        onStartSolve={() => setView("solve")}
+        onVaultUpdated={syncVaultInList}
+      />
+    );
+  }
+
   return (
     <div className="relative flex w-full max-w-lg flex-1 flex-col pb-8">
       <h2 className="mb-4 text-center text-lg font-bold text-[#84cc16]">
@@ -119,13 +161,27 @@ export default function ProblemStorageScreen({
             const isBusy = busyVaultId === vault.id;
             return (
               <li key={vault.id}>
-                <div className="relative rounded-2xl border border-[#84cc16]/30 bg-[#1f2937]/90 px-4 py-4 shadow-md shadow-[#84cc16]/5 transition-colors hover:border-[#84cc16]/55 hover:bg-[#1f2937]">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openVault(vault)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openVault(vault);
+                    }
+                  }}
+                  className="relative cursor-pointer rounded-2xl border border-[#84cc16]/30 bg-[#1f2937]/90 px-4 py-4 shadow-md shadow-[#84cc16]/5 transition-colors hover:border-[#84cc16]/55 hover:bg-[#1f2937]"
+                >
                   <div className="absolute right-3 top-3 flex gap-1.5">
                     <button
                       type="button"
                       aria-label={`${vault.name} 이름 수정`}
                       disabled={isBusy}
-                      onClick={() => setRenameVault(vault)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRenameVault(vault);
+                      }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#84cc16]/25 bg-[#111827]/80 text-sm transition-colors hover:border-[#84cc16]/50 hover:bg-[#84cc16]/10 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       ✏️
@@ -134,7 +190,10 @@ export default function ProblemStorageScreen({
                       type="button"
                       aria-label={`${vault.name} 삭제`}
                       disabled={isBusy}
-                      onClick={() => void handleDelete(vault)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDelete(vault);
+                      }}
                       className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/25 bg-[#111827]/80 text-sm transition-colors hover:border-red-400/50 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       🗑️
