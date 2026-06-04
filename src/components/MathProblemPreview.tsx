@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { normalizeMathMarkdown } from "@/lib/normalize-math-markdown";
 
 type MathProblemPreviewProps = {
   content: string;
@@ -22,6 +24,10 @@ export default function MathProblemPreview({
 }: MathProblemPreviewProps) {
   const showPlaceholder = !content.trim() && !isProcessing;
   const showProcessingPlaceholder = !content.trim() && isProcessing;
+  const markdown = useMemo(
+    () => normalizeMathMarkdown(content),
+    [content],
+  );
 
   return (
     <div
@@ -53,7 +59,7 @@ export default function MathProblemPreview({
               ),
             }}
           >
-            {content}
+            {markdown}
           </ReactMarkdown>
           {isProcessing ? (
             <span

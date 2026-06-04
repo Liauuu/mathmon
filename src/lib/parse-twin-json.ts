@@ -1,7 +1,13 @@
+import { repairJsonLatexEscapes } from "@/lib/normalize-math-markdown";
+
 export type TwinResult = {
   problems: string;
   answers: string;
 };
+
+function normalizeTwinField(value: string): string {
+  return repairJsonLatexEscapes(value);
+}
 
 function stripCodeFence(raw: string): string {
   return raw
@@ -11,11 +17,33 @@ function stripCodeFence(raw: string): string {
 }
 
 function unescapeJsonStringPartial(value: string): string {
-  return value
-    .replace(/\\n/g, "\n")
-    .replace(/\\t/g, "\t")
-    .replace(/\\"/g, '"')
-    .replace(/\\\\/g, "\\");
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] === "\\" && i + 1 < value.length) {
+      const next = value[i + 1];
+      if (next === "\\" || next === '"') {
+        out += next === "\\" ? "\\" : '"';
+        i += 2;
+        continue;
+      }
+      if (next === "n") {
+        out += "\n";
+        i += 2;
+        continue;
+      }
+      // LaTeX 명령(\frac, \beta 등)은 JSON 이스케이프로 해석하지 않음
+      if ("bfnrt".includes(next)) {
+        out += "\\" + next;
+        i += 2;
+        continue;
+      }
+      out += "\\" + next;
+      i += 2;
+      continue;
+    }
+    out += value[i];
+  }
+  return repairJsonLatexEscapes(out);
 }
 
 function extractJsonStringField(
@@ -60,7 +88,10 @@ export function parseTwinJson(raw: string): TwinResult | null {
       typeof data.problems === "string" &&
       typeof data.answers === "string"
     ) {
-      return { problems: data.problems, answers: data.answers };
+      return {
+        problems: normalizeTwinField(data.problems),
+        answers: normalizeTwinField(data.answers),
+      };
     }
   } catch {
     /* streaming partial */
@@ -71,7 +102,7 @@ export function parseTwinJson(raw: string): TwinResult | null {
   if (!problems && !answers) return null;
 
   return {
-    problems: problems ?? "",
-    answers: answers ?? "",
+    problems: normalizeTwinField(problems ?? ""),
+    answers: normalizeTwinField(answers ?? ""),
   };
 }
