@@ -8,7 +8,7 @@ import { parseTextSseStream } from "@/lib/gemini-sse";
 import { parseTwinJson } from "@/lib/parse-twin-json";
 
 const TWIN_CONFIRM_MESSAGE =
-  "기존 사진 문제는 저작권 문제 위험이 있어 삭제되며, 새로 생성된 3개의 쌍둥이 문제만 화면에 남게 됩니다. 진행하시겠습니까?";
+  "연습문제 생성 후에는 새로 생성된 문제만 화면에 보이고, 기존에 올린 사진 문제는 지워집니다. 진행하시겠습니까?";
 
 type Phase = "upload" | "twins";
 
@@ -94,7 +94,7 @@ export default function MathProblemUploadButton() {
 
       if (!response.ok) {
         const errBody = await response.text();
-        throw new Error(errBody || "쌍둥이 문제 생성에 실패했습니다.");
+        throw new Error(errBody || "연습문제 생성에 실패했습니다.");
       }
 
       let accumulated = "";
@@ -109,7 +109,7 @@ export default function MathProblemUploadButton() {
 
       const final = parseTwinJson(accumulated);
       if (!final?.problems.trim() || !final?.answers.trim()) {
-        throw new Error("쌍둥이 문제 응답 형식을 해석하지 못했습니다.");
+        throw new Error("연습문제 응답 형식을 해석하지 못했습니다.");
       }
       setTwinProblems(final.problems);
       setTwinAnswers(final.answers);
@@ -117,7 +117,7 @@ export default function MathProblemUploadButton() {
       setError(
         err instanceof Error
           ? err.message
-          : "쌍둥이 문제 생성 중 오류가 발생했습니다.",
+          : "연습문제 생성 중 오류가 발생했습니다.",
       );
     } finally {
       setIsTwinProcessing(false);
@@ -179,7 +179,7 @@ export default function MathProblemUploadButton() {
           disabled={isExtracting}
           className="flex h-12 w-full max-w-xs items-center justify-center rounded-2xl border border-[#84cc16]/50 bg-[#84cc16]/90 px-5 text-sm font-bold text-[#111827] shadow-md shadow-[#84cc16]/25 transition-all hover:bg-[#a3e635] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          쌍둥이 문제 3개 만들기
+          연습문제 3개 생성하기 👾
         </button>
       ) : null}
     </div>
