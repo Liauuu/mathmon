@@ -30,6 +30,11 @@ LaTeX·수식 규칙 (반드시 준수, 정답란 특히 엄격):
 
 problems·answers 필드 모두 연습문제 3개를 위→아래 순서로 한 문자열에 넣고, 항목 사이는 반드시 \\n\\n---\\n\\n 로만 구분해.`;
 
+const EXCLUDE_PROBLEMS_PROMPT_PREFIX = `아래는 방금 전에 생성했던 연습문제 3개이다. 이 문제들과 숫자·조건·형태·지문이 겹치지 않는 완전히 새로운 연습문제 3개를 만들어라. 문장 구조만 살짝 바꾼 수준의 변형은 금지한다.
+
+이전에 만든 연습문제:
+`;
+
 export async function POST(request: Request) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -38,7 +43,7 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: { problemText?: string };
+  let body: { problemText?: string; excludeProblems?: string };
   try {
     body = await request.json();
   } catch {
@@ -48,6 +53,17 @@ export async function POST(request: Request) {
   const problemText = body.problemText?.trim();
   if (!problemText) {
     return new Response("문제 텍스트가 필요합니다.", { status: 400 });
+  }
+
+  const excludeProblems = body.excludeProblems?.trim();
+  const contentParts: { text: string }[] = [
+    { text: SYSTEM_PROMPT },
+    { text: `입력된 원본 문제:\n\n${problemText}` },
+  ];
+  if (excludeProblems) {
+    contentParts.push({
+      text: `${EXCLUDE_PROBLEMS_PROMPT_PREFIX}\n\n${excludeProblems}`,
+    });
   }
 
   const geminiUrl = new URL(
@@ -60,14 +76,7 @@ export async function POST(request: Request) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: SYSTEM_PROMPT },
-            { text: `입력된 원본 문제:\n\n${problemText}` },
-          ],
-        },
-      ],
+      contents: [{ parts: contentParts }],
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7,

@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase";
+import BottomNav, { type AppTab } from "@/components/BottomNav";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 import MathProblemUploadButton from "@/components/MathProblemUploadButton";
+import ProblemStorageScreen from "@/components/ProblemStorageScreen";
+import { getFirebaseAuth } from "@/lib/firebase";
 
 export default function HomeClient() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [tab, setTab] = useState<AppTab>("home");
+  const [homeResetKey, setHomeResetKey] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (currentUser) => {
@@ -18,6 +22,11 @@ export default function HomeClient() {
     return unsubscribe;
   }, []);
 
+  function goHome() {
+    setTab("home");
+    setHomeResetKey((k) => k + 1);
+  }
+
   if (authLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -26,9 +35,28 @@ export default function HomeClient() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <GoogleLoginButton />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center">
-      {user ? <MathProblemUploadButton /> : <GoogleLoginButton />}
-    </div>
+    <>
+      <div className="flex w-full flex-1 flex-col items-center justify-center pb-24 pt-4">
+        {tab === "home" ? (
+          <MathProblemUploadButton key={homeResetKey} userId={user.uid} />
+        ) : (
+          <ProblemStorageScreen userId={user.uid} />
+        )}
+      </div>
+      <BottomNav
+        activeTab={tab}
+        onHome={goHome}
+        onStorage={() => setTab("storage")}
+      />
+    </>
   );
 }

@@ -12,7 +12,13 @@ const TWIN_CONFIRM_MESSAGE =
 
 type Phase = "upload" | "twins";
 
-export default function MathProblemUploadButton() {
+type MathProblemUploadButtonProps = {
+  userId: string;
+};
+
+export default function MathProblemUploadButton({
+  userId,
+}: MathProblemUploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("upload");
   const [extractedText, setExtractedText] = useState("");
@@ -72,17 +78,28 @@ export default function MathProblemUploadButton() {
     }
   }
 
-  async function runTwinGeneration(problemText: string) {
+  async function runTwinGeneration(
+    problemText: string,
+    excludeProblems?: string,
+  ) {
     setIsTwinError(false);
     setTwinProblems("");
     setTwinAnswers("");
     setIsTwinProcessing(true);
 
     try {
+      const payload: { problemText: string; excludeProblems?: string } = {
+        problemText,
+      };
+      const trimmedExclude = excludeProblems?.trim();
+      if (trimmedExclude) {
+        payload.excludeProblems = trimmedExclude;
+      }
+
       const response = await fetch("/api/twin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problemText }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -131,14 +148,40 @@ export default function MathProblemUploadButton() {
     await runTwinGeneration(twinSourceText);
   }
 
+  async function handleTwinMore() {
+    if (!twinSourceText.trim() || !twinProblems.trim() || isTwinProcessing) {
+      return;
+    }
+    await runTwinGeneration(twinSourceText, twinProblems);
+  }
+
+  function handleResetToUpload() {
+    setPhase("upload");
+    setExtractedText("");
+    setTwinProblems("");
+    setTwinAnswers("");
+    setTwinSourceText("");
+    setIsTwinError(false);
+    setIsExtracting(false);
+    setIsTwinProcessing(false);
+    setError(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+  }
+
   if (phase === "twins") {
     return (
       <TwinResultSection
+        userId={userId}
+        originalExtractedText={twinSourceText}
         problems={twinProblems}
         answers={twinAnswers}
         isProcessing={isTwinProcessing}
         isTwinError={isTwinError}
         onRetry={handleTwinRetry}
+        onGenerateMore={handleTwinMore}
+        onResetToHome={handleResetToUpload}
       />
     );
   }
@@ -147,11 +190,12 @@ export default function MathProblemUploadButton() {
     <div className="flex w-full max-w-lg flex-col items-center gap-4">
       <p
         role="note"
-        className="w-full rounded-2xl border-2 border-[#84cc16]/60 bg-[#84cc16]/15 px-4 py-3 text-center text-sm font-semibold leading-relaxed text-[#d9f99d] shadow-[0_0_24px_rgba(132,204,22,0.25)]"
+        className="w-full rounded-2xl border border-[#84cc16]/50 bg-[#1f2937]/90 px-4 py-3.5 text-center text-sm leading-relaxed text-gray-200 shadow-lg shadow-[#84cc16]/10"
       >
-        <span className="text-[#a3e635]">⚠️</span> 사진에 텍스트가 최대한 정확하고
-        선명하게 보이도록 찍어주세요! 글자가 흐리거나 깨지면 AI 문제 생성이 원활하지
-        않을 수 있습니다. <span className="text-[#84cc16]">👾</span>
+        AI가 정확히 문제를 만들 수 있게{" "}
+        <span className="font-bold text-[#fde047]">&apos;한 문항&apos;</span>만{" "}
+        <span className="font-bold text-[#a3e635]">&apos;선명히&apos;</span> 찍힌
+        사진을 올려주세요.
       </p>
 
       <input

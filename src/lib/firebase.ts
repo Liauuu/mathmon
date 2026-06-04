@@ -6,6 +6,7 @@ import {
   type Auth,
   type UserCredential,
 } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,6 +27,10 @@ function getFirebaseApp(): FirebaseApp {
 
 export function getFirebaseAuth(): Auth {
   return getAuth(getFirebaseApp());
+}
+
+export function getFirebaseFirestore(): Firestore {
+  return getFirestore(getFirebaseApp());
 }
 
 export async function signInWithGoogle(): Promise<UserCredential> {
