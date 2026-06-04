@@ -1,4 +1,4 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 const GEMINI_MODEL = "gemini-1.5-flash";
 const PROMPT =
