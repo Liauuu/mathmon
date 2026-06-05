@@ -1,4 +1,6 @@
-export type ExtractDifficulty = "low_mid" | "high";
+import type { ExtractDifficulty } from "@/lib/gemini-models";
+
+export type { ExtractDifficulty };
 
 export type ExtractJsonResult = {
   text: string;

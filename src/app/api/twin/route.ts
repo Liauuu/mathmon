@@ -1,14 +1,10 @@
 import { geminiResponseToSseStream } from "@/lib/gemini-sse";
+import {
+  getGeminiModelByDifficulty,
+  type ExtractDifficulty,
+} from "@/lib/gemini-models";
 
 export const runtime = "nodejs";
-
-type ExtractDifficulty = "low_mid" | "high";
-
-function getGeminiModelByDifficulty(difficulty: ExtractDifficulty | undefined) {
-  // 비용 최적화를 위해 난이도가 낮으면 flash, 높으면 pro를 사용한다.
-  if (difficulty === "low_mid") return "gemini-1.5-flash";
-  return "gemini-1.5-pro";
-}
 
 const SYSTEM_PROMPT = `너는 최고의 수학 강사야. 입력된 수학 문제와 완전히 동일한 유형·난이도이되, 숫자와 조건만 바뀐 '연습문제'를 정확히 3개 만들어줘.
 풀이 과정은 절대 포함하지 말고, 오직 [문제]와 [정답]만 작성해.

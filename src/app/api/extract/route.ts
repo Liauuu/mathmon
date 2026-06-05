@@ -1,8 +1,8 @@
 import { geminiResponseToSseStream } from "@/lib/gemini-sse";
+import { GEMINI_FLASH_MODEL } from "@/lib/gemini-models";
 
 export const runtime = "nodejs";
 
-const GEMINI_MODEL = "gemini-1.5-flash";
 const PROMPT = `너는 최고의 수학 문제 OCR AI야.
 
 이미지에서 수학 문제의 텍스트와 수식을 정확하게 추출해줘.
@@ -10,8 +10,8 @@ const PROMPT = `너는 최고의 수학 문제 OCR AI야.
 불필요한 설명 없이 문제 내용만 추출해 "text"에 넣어라.
 
 동시에 이 문제의 난이도를 판정해라.
-너의 난이도 판정 결과에 따라 시스템은 다음 단계에서 비용이 저렴한 'gemini-1.5-flash'를 계속 쓸지,
-혹은 비용이 10배 비싼 프리미엄 'gemini-1.5-pro'를 깨워서 풀릴 것이다.
+너의 난이도 판정 결과에 따라 시스템은 다음 단계에서 비용이 저렴한 Flash 모델을 계속 쓸지,
+혹은 비용이 훨씬 비싼 프리미엄 Pro 모델을 깨워서 풀릴 것이다.
 
 그러므로 단순 연산이나 개념 문제는 반드시 'low_mid'로 판정하여 비용을 아끼고,
 그래프/도형이 포함되거나 추론이 필요한 복잡한 심화/수능 4점 문항만 'high'로 판정해라.
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const base64 = arrayBufferToBase64(await file.arrayBuffer());
 
   const geminiUrl = new URL(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_FLASH_MODEL}:streamGenerateContent`,
   );
   geminiUrl.searchParams.set("alt", "sse");
   geminiUrl.searchParams.set("key", apiKey);
