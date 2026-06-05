@@ -6,6 +6,7 @@ import MathProblemPreview from "@/components/MathProblemPreview";
 import TwinResultSection from "@/components/TwinResultSection";
 import { parseTextSseStream } from "@/lib/gemini-sse";
 import { parseTwinJson } from "@/lib/parse-twin-json";
+import { parseExtractJson, type ExtractDifficulty } from "@/lib/parse-extract-json";
 
 const TWIN_CONFIRM_MESSAGE =
   "연습문제 생성 후에는 새로 생성된 문제만 화면에 보이고, 기존에 올린 사진 문제는 지워집니다. 진행하시겠습니까?";
@@ -22,6 +23,9 @@ export default function MathProblemUploadButton({
   const inputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("upload");
   const [extractedText, setExtractedText] = useState("");
+  const [extractedDifficulty, setExtractedDifficulty] = useState<ExtractDifficulty | null>(
+    null,
+  );
   const [isExtracting, setIsExtracting] = useState(false);
   const [isTwinProcessing, setIsTwinProcessing] = useState(false);
   const [twinProblems, setTwinProblems] = useState("");
@@ -31,7 +35,10 @@ export default function MathProblemUploadButton({
   const [error, setError] = useState<string | null>(null);
 
   const hasExtracted =
-    phase === "upload" && extractedText.trim().length > 0 && !isExtracting;
+    phase === "upload" &&
+    extractedDifficulty !== null &&
+    extractedText.trim().length > 0 &&
+    !isExtracting;
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -40,6 +47,7 @@ export default function MathProblemUploadButton({
 
     setError(null);
     setExtractedText("");
+    setExtractedDifficulty(null);
     setIsExtracting(true);
 
     try {
@@ -67,8 +75,15 @@ export default function MathProblemUploadButton({
       let accumulated = "";
       await parseTextSseStream(response, (chunk) => {
         accumulated += chunk;
-        setExtractedText(accumulated);
       });
+
+      const parsed = parseExtractJson(accumulated);
+      if (!parsed?.text?.trim()) {
+        throw new Error("수식/난이도 응답 형식을 해석하지 못했습니다.");
+      }
+
+      setExtractedText(parsed.text);
+      setExtractedDifficulty(parsed.difficulty);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "이미지 처리 중 오류가 발생했습니다.",
@@ -88,9 +103,13 @@ export default function MathProblemUploadButton({
     setIsTwinProcessing(true);
 
     try {
-      const payload: { problemText: string; excludeProblems?: string } = {
-        problemText,
-      };
+      const difficultyToUse: ExtractDifficulty = extractedDifficulty ?? "high";
+
+      const payload: {
+        problemText: string;
+        excludeProblems?: string;
+        difficulty?: ExtractDifficulty;
+      } = { problemText, difficulty: difficultyToUse };
       const trimmedExclude = excludeProblems?.trim();
       if (trimmedExclude) {
         payload.excludeProblems = trimmedExclude;
@@ -131,7 +150,7 @@ export default function MathProblemUploadButton({
   }
 
   async function handleTwinGenerate() {
-    if (!extractedText.trim()) return;
+    if (!extractedText.trim() || extractedDifficulty === null) return;
 
     const confirmed = window.confirm(TWIN_CONFIRM_MESSAGE);
     if (!confirmed) return;
@@ -158,6 +177,7 @@ export default function MathProblemUploadButton({
   function handleResetToUpload() {
     setPhase("upload");
     setExtractedText("");
+    setExtractedDifficulty(null);
     setTwinProblems("");
     setTwinAnswers("");
     setTwinSourceText("");

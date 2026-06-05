@@ -2,7 +2,13 @@ import { geminiResponseToSseStream } from "@/lib/gemini-sse";
 
 export const runtime = "nodejs";
 
-const GEMINI_MODEL = "gemini-2.5-pro";
+type ExtractDifficulty = "low_mid" | "high";
+
+function getGeminiModelByDifficulty(difficulty: ExtractDifficulty | undefined) {
+  // 비용 최적화를 위해 난이도가 낮으면 flash, 높으면 pro를 사용한다.
+  if (difficulty === "low_mid") return "gemini-1.5-flash";
+  return "gemini-1.5-pro";
+}
 
 const SYSTEM_PROMPT = `너는 최고의 수학 강사야. 입력된 수학 문제와 완전히 동일한 유형·난이도이되, 숫자와 조건만 바뀐 '연습문제'를 정확히 3개 만들어줘.
 풀이 과정은 절대 포함하지 말고, 오직 [문제]와 [정답]만 작성해.
@@ -43,7 +49,11 @@ export async function POST(request: Request) {
     });
   }
 
-  let body: { problemText?: string; excludeProblems?: string };
+  let body: {
+    problemText?: string;
+    excludeProblems?: string;
+    difficulty?: ExtractDifficulty;
+  };
   try {
     body = await request.json();
   } catch {
@@ -56,6 +66,7 @@ export async function POST(request: Request) {
   }
 
   const excludeProblems = body.excludeProblems?.trim();
+  const geminiModel = getGeminiModelByDifficulty(body.difficulty);
   const contentParts: { text: string }[] = [
     { text: SYSTEM_PROMPT },
     { text: `입력된 원본 문제:\n\n${problemText}` },
@@ -67,7 +78,7 @@ export async function POST(request: Request) {
   }
 
   const geminiUrl = new URL(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent`,
   );
   geminiUrl.searchParams.set("alt", "sse");
   geminiUrl.searchParams.set("key", apiKey);
