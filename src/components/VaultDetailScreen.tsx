@@ -241,7 +241,7 @@ export default function VaultDetailScreen({
         </>
       )}
 
-      <div className="pointer-events-none fixed bottom-[5.5rem] left-1/2 z-30 flex w-full max-w-md -translate-x-1/2 justify-end px-5">
+      <div className="pointer-events-none fixed bottom-[calc(var(--business-footer-height)+5.5rem)] left-1/2 z-30 flex w-full max-w-md -translate-x-1/2 justify-end px-5">
         <button
           type="button"
           onClick={onStartSolve}

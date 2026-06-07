@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import BusinessInfoFooter from "@/components/BusinessInfoFooter";
 import PwaAutoUpdate from "@/components/PwaAutoUpdate";
 import "./globals.css";
 
@@ -59,7 +60,10 @@ export default function RootLayout({
       <body className="min-h-full bg-[#111827] font-sans text-white">
         <PwaAutoUpdate />
         <div className="mx-auto flex min-h-full w-full max-w-md flex-col shadow-2xl shadow-black/50 md:max-w-7xl md:shadow-none lg:max-w-full">
-          {children}
+          <div className="flex flex-1 flex-col pb-[var(--business-footer-height)]">
+            {children}
+          </div>
+          <BusinessInfoFooter />
         </div>
       </body>
     </html>

@@ -381,7 +381,7 @@ export default function VaultPracticeSolveScreen({
 
       {answerOpen && current ? (
         <div
-          className="fixed inset-x-0 bottom-[5.5rem] z-40 mx-auto w-full max-w-full px-4 animate-[solve-answer-in_0.28s_ease-out] md:max-w-7xl md:px-6 lg:max-w-none"
+          className="fixed inset-x-0 bottom-[calc(var(--business-footer-height)+5.5rem)] z-40 mx-auto w-full max-w-full px-4 animate-[solve-answer-in_0.28s_ease-out] md:max-w-7xl md:px-6 lg:max-w-none"
           role="dialog"
           aria-label="정답"
         >
@@ -394,7 +394,7 @@ export default function VaultPracticeSolveScreen({
         </div>
       ) : null}
 
-      <div className="pointer-events-none fixed bottom-[5.5rem] left-1/2 z-50 flex w-full max-w-full -translate-x-1/2 flex-col items-end gap-2 px-4 md:max-w-7xl md:px-6 lg:max-w-none lg:px-8">
+      <div className="pointer-events-none fixed bottom-[calc(var(--business-footer-height)+5.5rem)] left-1/2 z-50 flex w-full max-w-full -translate-x-1/2 flex-col items-end gap-2 px-4 md:max-w-7xl md:px-6 lg:max-w-none lg:px-8">
         {answerOpen && current && !grades[current.id] ? (
           <div className="pointer-events-auto flex gap-2">
             <button

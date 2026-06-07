@@ -4,6 +4,8 @@
   --background: #111827;
   --foreground: #f9fafb;
   --monster-lime: #84cc16;
+  --business-footer-height: 9.25rem;
+  --bottom-nav-height: 4.25rem;
 }
 
 @theme inline {

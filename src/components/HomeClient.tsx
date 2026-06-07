@@ -74,7 +74,7 @@ function HomeClientContent() {
   return (
     <>
       <div
-        className={`flex w-full flex-1 flex-col pb-24 pt-4 ${
+        className={`flex w-full flex-1 flex-col pb-[calc(var(--bottom-nav-height)+var(--business-footer-height))] pt-4 ${
           tab === "storage"
             ? "min-h-0 items-stretch justify-start px-2 md:px-4"
             : "items-center justify-center"
