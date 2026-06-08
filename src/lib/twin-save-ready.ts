@@ -1,16 +1,16 @@
-import { splitTwinSections } from "@/lib/split-twin-sections";
+import type { TwinProblemItem } from "@/lib/parse-twin-json";
+
+const REQUIRED_ITEM_COUNT = 3;
 
 export function isTwinSaveReady(
-  problems: string,
-  answers: string,
+  items: TwinProblemItem[],
   isProcessing: boolean,
   isTwinError: boolean,
 ): boolean {
   if (isProcessing || isTwinError) return false;
+  if (items.length !== REQUIRED_ITEM_COUNT) return false;
 
-  const problemParts = splitTwinSections(problems);
-  const answerParts = splitTwinSections(answers);
-
-  return problemParts.every((p) => p.trim().length > 0) &&
-    answerParts.every((a) => a.trim().length > 0);
+  return items.every(
+    (item) => item.question.trim().length > 0 && item.solution.trim().length > 0,
+  );
 }

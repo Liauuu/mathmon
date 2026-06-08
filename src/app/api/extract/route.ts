@@ -9,23 +9,35 @@ const PROMPT = `너는 최고의 수학 문제 OCR AI야.
 모든 수학 기호와 수식은 반드시 LaTeX 문법을 사용해 $ 기호로 감싸줘 (예: $y = ax + b$).
 불필요한 설명 없이 문제 내용만 추출해 "text"에 넣어라.
 
-동시에 이 문제의 난이도를 판정해라.
+동시에 아래 항목을 판정해라.
+
+1) 난이도 (difficulty)
 너의 난이도 판정 결과에 따라 시스템은 다음 단계에서 비용이 저렴한 Flash 모델을 계속 쓸지,
 혹은 비용이 훨씬 비싼 프리미엄 Pro 모델을 깨워서 풀릴 것이다.
+단순 연산이나 개념 문제는 반드시 'low_mid'로 판정하여 비용을 아끼고,
+추론이 필요한 복잡한 심화/수능 4점 문항은 'high'로 판정해라.
 
-그러므로 단순 연산이나 개념 문제는 반드시 'low_mid'로 판정하여 비용을 아끼고,
-그래프/도형이 포함되거나 추론이 필요한 복잡한 심화/수능 4점 문항만 'high'로 판정해라.
+2) 도형 유무 (has_geometry)
+문제에 삼각형, 원, 다각형, 좌표평면 위의 도형, 각도 표시, 길이/넓이를 나타내는 기하 도형 그림이 있으면 true.
+순수 수식·문장만 있으면 false.
+
+3) 그래프 유무 (has_graph)
+문제에 함수 그래프, 좌표평면 위의 곡선/직선, 포물선·삼각함수 그래프, (x,y) 축이 있는 좌표 그래프가 있으면 true.
+도형만 있고 함수 그래프가 없으면 false.
 
 반드시 아래 JSON 형식만 출력해. 다른 설명, 마크다운 코드블록, 주석은 금지.
 
 {
   "text": "추출된 문제 지문 전체(문자열)",
-  "difficulty": "low_mid" | "high"
+  "difficulty": "low_mid" | "high",
+  "has_geometry": true | false,
+  "has_graph": true | false
 }
 
 주의:
 - JSON 문자열 안의 백슬래시(예: \\frac, \\sqrt)는 JSON escape 규칙에 맞게 반드시 이스케이프(\\\\)해서 출력해라.
-- "text"에는 UI 라벨/문제 번호 같은 접두어를 붙이지 마라. 바로 지문 내용부터 시작해라.`;
+- "text"에는 UI 라벨/문제 번호 같은 접두어를 붙이지 마라. 바로 지문 내용부터 시작해라.
+- has_geometry, has_graph는 반드시 boolean(true/false)으로 출력해라.`;
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);

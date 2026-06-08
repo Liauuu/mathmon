@@ -1,11 +1,42 @@
 import { repairJsonLatexEscapes } from "@/lib/normalize-math-markdown";
 
-export type TwinResult = {
-  problems: string;
-  answers: string;
+export type GraphPlotDatum = {
+  fn?: string;
+  fnType?: "linear" | "implicit" | "parametric" | "polar" | "points" | "vector";
+  graphType?: "interval" | "polyline" | "text" | "scatter";
+  range?: [number, number];
+  color?: string;
+  nSamples?: number;
+  points?: [number, number][];
+  text?: string;
+  location?: [number, number];
 };
 
-function normalizeTwinField(value: string): string {
+export type GraphData = {
+  width?: number;
+  height?: number;
+  grid?: boolean;
+  disableZoom?: boolean;
+  xDomain?: [number, number];
+  yDomain?: [number, number];
+  xAxis?: { domain?: [number, number]; label?: string };
+  yAxis?: { domain?: [number, number]; label?: string };
+  data: GraphPlotDatum[];
+  annotations?: unknown[];
+};
+
+export type TwinProblemItem = {
+  question: string;
+  solution: string;
+  svg_code?: string;
+  graph_data?: GraphData;
+};
+
+export type TwinJsonResult = {
+  items: TwinProblemItem[];
+};
+
+function normalizeTextField(value: string): string {
   return repairJsonLatexEscapes(value);
 }
 
@@ -16,93 +47,107 @@ function stripCodeFence(raw: string): string {
     .trim();
 }
 
-function unescapeJsonStringPartial(value: string): string {
-  let out = "";
-  for (let i = 0; i < value.length; i += 1) {
-    if (value[i] === "\\" && i + 1 < value.length) {
-      const next = value[i + 1];
-      if (next === "\\" || next === '"') {
-        out += next === "\\" ? "\\" : '"';
-        i += 2;
-        continue;
-      }
-      if (next === "n") {
-        out += "\n";
-        i += 2;
-        continue;
-      }
-      // LaTeX 명령(\frac, \beta 등)은 JSON 이스케이프로 해석하지 않음
-      if ("bfnrt".includes(next)) {
-        out += "\\" + next;
-        i += 2;
-        continue;
-      }
-      out += "\\" + next;
-      i += 2;
-      continue;
-    }
-    out += value[i];
-  }
-  return repairJsonLatexEscapes(out);
+function normalizeGraphData(value: unknown): GraphData | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Partial<GraphData>;
+  if (!Array.isArray(data.data) || data.data.length === 0) return undefined;
+  return {
+    width: typeof data.width === "number" ? data.width : undefined,
+    height: typeof data.height === "number" ? data.height : undefined,
+    grid: typeof data.grid === "boolean" ? data.grid : undefined,
+    disableZoom:
+      typeof data.disableZoom === "boolean" ? data.disableZoom : undefined,
+    xDomain: Array.isArray(data.xDomain) ? (data.xDomain as [number, number]) : undefined,
+    yDomain: Array.isArray(data.yDomain) ? (data.yDomain as [number, number]) : undefined,
+    xAxis: data.xAxis as GraphData["xAxis"],
+    yAxis: data.yAxis as GraphData["yAxis"],
+    data: data.data as GraphPlotDatum[],
+    annotations: data.annotations,
+  };
 }
 
-function extractJsonStringField(
-  raw: string,
-  field: "problems" | "answers",
-): string | undefined {
-  const marker = `"${field}"`;
-  const start = raw.indexOf(marker);
-  if (start === -1) return undefined;
-
-  const colon = raw.indexOf(":", start + marker.length);
-  if (colon === -1) return undefined;
-
-  let i = colon + 1;
-  while (i < raw.length && /\s/.test(raw[i])) i += 1;
-  if (raw[i] !== '"') return undefined;
-  i += 1;
-
-  let result = "";
-  while (i < raw.length) {
-    const ch = raw[i];
-    if (ch === "\\" && i + 1 < raw.length) {
-      result += ch + raw[i + 1];
-      i += 2;
-      continue;
-    }
-    if (ch === '"') break;
-    result += ch;
-    i += 1;
+function normalizeTwinItem(value: unknown): TwinProblemItem | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Partial<TwinProblemItem>;
+  if (typeof item.question !== "string" || typeof item.solution !== "string") {
+    return null;
   }
 
-  return unescapeJsonStringPartial(result);
+  const normalized: TwinProblemItem = {
+    question: normalizeTextField(item.question),
+    solution: normalizeTextField(item.solution),
+  };
+
+  if (typeof item.svg_code === "string" && item.svg_code.trim()) {
+    normalized.svg_code = item.svg_code.trim();
+  }
+
+  const graphData = normalizeGraphData(item.graph_data);
+  if (graphData) {
+    normalized.graph_data = graphData;
+  }
+
+  return normalized;
 }
 
-export function parseTwinJson(raw: string): TwinResult | null {
+function normalizeTwinItems(items: unknown[]): TwinProblemItem[] {
+  const result: TwinProblemItem[] = [];
+  for (const item of items) {
+    const normalized = normalizeTwinItem(item);
+    if (normalized) result.push(normalized);
+  }
+  return result;
+}
+
+function extractPartialItems(raw: string): TwinProblemItem[] {
+  const itemsKey = raw.indexOf('"items"');
+  if (itemsKey === -1) return [];
+
+  const arrayStart = raw.indexOf("[", itemsKey);
+  if (arrayStart === -1) return [];
+
+  const slice = raw.slice(arrayStart);
+  const candidates = [slice, `${slice}]`, `${slice}}]`, `${slice}}}]`];
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as unknown;
+      if (Array.isArray(parsed)) {
+        return normalizeTwinItems(parsed);
+      }
+    } catch {
+      /* try next */
+    }
+  }
+
+  return [];
+}
+
+export function parseTwinJson(raw: string): TwinJsonResult | null {
   const cleaned = stripCodeFence(raw);
   if (!cleaned) return null;
 
   try {
-    const data = JSON.parse(cleaned) as Partial<TwinResult>;
-    if (
-      typeof data.problems === "string" &&
-      typeof data.answers === "string"
-    ) {
-      return {
-        problems: normalizeTwinField(data.problems),
-        answers: normalizeTwinField(data.answers),
-      };
+    const data = JSON.parse(cleaned) as { items?: unknown[] };
+    if (Array.isArray(data.items)) {
+      const items = normalizeTwinItems(data.items);
+      if (items.length > 0) return { items };
     }
   } catch {
     /* streaming partial */
   }
 
-  const problems = extractJsonStringField(cleaned, "problems");
-  const answers = extractJsonStringField(cleaned, "answers");
-  if (!problems && !answers) return null;
+  const partialItems = extractPartialItems(cleaned);
+  if (partialItems.length > 0) return { items: partialItems };
 
-  return {
-    problems: normalizeTwinField(problems ?? ""),
-    answers: normalizeTwinField(answers ?? ""),
-  };
+  return null;
+}
+
+export function serializeTwinItemsForExclude(items: TwinProblemItem[]): string {
+  return JSON.stringify(
+    items.map((item) => ({
+      question: item.question,
+      solution: item.solution,
+    })),
+  );
 }

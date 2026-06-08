@@ -5,6 +5,8 @@ export type { ExtractDifficulty };
 export type ExtractJsonResult = {
   text: string;
   difficulty: ExtractDifficulty;
+  has_geometry: boolean;
+  has_graph: boolean;
 };
 
 function stripCodeFence(raw: string): string {
@@ -12,6 +14,10 @@ function stripCodeFence(raw: string): string {
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```\s*$/i, "")
     .trim();
+}
+
+function parseBooleanFlag(value: unknown): boolean {
+  return value === true;
 }
 
 export function parseExtractJson(raw: string): ExtractJsonResult | null {
@@ -25,9 +31,10 @@ export function parseExtractJson(raw: string): ExtractJsonResult | null {
     return {
       text: data.text,
       difficulty: data.difficulty,
+      has_geometry: parseBooleanFlag(data.has_geometry),
+      has_graph: parseBooleanFlag(data.has_graph),
     };
   } catch {
     return null;
   }
 }
-

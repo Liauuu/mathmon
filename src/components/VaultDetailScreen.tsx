@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import MathProblemPreview from "@/components/MathProblemPreview";
+import ProblemGraphicRenderer from "@/components/ProblemGraphicRenderer";
 import {
   loadVaultProblems,
   swapVaultProblemsInDisplayOrder,
@@ -222,6 +223,10 @@ export default function VaultDetailScreen({
                     <p className="mb-1.5 px-1 text-xs font-semibold text-[#a3e635]">
                       문제 {n}
                     </p>
+                    <ProblemGraphicRenderer
+                      svgCode={item.svg_code}
+                      graphData={item.graph_data}
+                    />
                     <MathProblemPreview content={item.problem} compact />
                   </button>
                   <div

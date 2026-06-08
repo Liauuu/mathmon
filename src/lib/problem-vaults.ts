@@ -14,6 +14,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase";
+import type { GraphData, TwinProblemItem } from "@/lib/parse-twin-json";
 
 export type ProblemVault = {
   id: string;
@@ -102,6 +103,8 @@ export type VaultProblem = {
   id: string;
   problem: string;
   answer: string;
+  svg_code?: string;
+  graph_data?: GraphData;
   /** 쌍둥이 3문항 세트 안의 위치(0–2). 전역 표시 순서는 vault.problemIds 로 관리 */
   index: number;
   savedAt: number;
@@ -114,12 +117,27 @@ function parseGradeStatus(data: DocumentData): ProblemGradeStatus | undefined {
   return undefined;
 }
 
+function parseGraphData(value: unknown): GraphData | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const data = value as Partial<GraphData>;
+  if (!Array.isArray(data.data) || data.data.length === 0) return undefined;
+  return data as GraphData;
+}
+
 function problemFromDoc(id: string, data: DocumentData): VaultProblem {
   const savedAt = data.savedAt;
+  const svgCode =
+    typeof data.svg_code === "string" && data.svg_code.trim()
+      ? data.svg_code
+      : undefined;
+  const graphData = parseGraphData(data.graph_data);
+
   return {
     id,
     problem: typeof data.problem === "string" ? data.problem : "",
     answer: typeof data.answer === "string" ? data.answer : "",
+    svg_code: svgCode,
+    graph_data: graphData,
     index: typeof data.index === "number" ? data.index : 0,
     savedAt:
       typeof savedAt === "number"
@@ -232,10 +250,7 @@ export async function deleteVault(
 
 export type SaveTwinProblemsInput = {
   originalExtractedText: string;
-  problems: string;
-  answers: string;
-  problemParts: string[];
-  answerParts: string[];
+  items: TwinProblemItem[];
 };
 
 export async function saveTwinProblemsToVault(
@@ -243,9 +258,8 @@ export async function saveTwinProblemsToVault(
   vaultId: string,
   input: SaveTwinProblemsInput,
 ): Promise<void> {
-  const parts = input.problemParts;
-  const answers = input.answerParts;
-  if (parts.length !== 3 || answers.length !== 3) {
+  const items = input.items;
+  if (items.length !== 3) {
     throw new Error("저장할 연습문제가 3개가 아닙니다.");
   }
 
@@ -262,14 +276,20 @@ export async function saveTwinProblemsToVault(
     const newProblemIds: string[] = [];
 
     for (let i = 0; i < 3; i += 1) {
+      const item = items[i];
       const problemRef = doc(vaultProblemsCollection(userId, vaultId));
       newProblemIds.push(problemRef.id);
-      transaction.set(problemRef, {
-        problem: parts[i],
-        answer: answers[i],
+
+      const payload: Record<string, unknown> = {
+        problem: item.question,
+        answer: item.solution,
         index: i,
         savedAt: serverTimestamp(),
-      });
+      };
+      if (item.svg_code) payload.svg_code = item.svg_code;
+      if (item.graph_data) payload.graph_data = item.graph_data;
+
+      transaction.set(problemRef, payload);
     }
 
     transaction.update(vaultRef, {
@@ -280,8 +300,7 @@ export async function saveTwinProblemsToVault(
     transaction.set(trainingRef, {
       original_extracted_text: input.originalExtractedText,
       generated_twin_problems: {
-        problems: input.problems,
-        answers: input.answers,
+        items,
       },
       saved_at: serverTimestamp(),
       userId,

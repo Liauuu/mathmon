@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import DrawingToolbar from "@/components/DrawingToolbar";
 import MathProblemPreview from "@/components/MathProblemPreview";
+import ProblemGraphicRenderer from "@/components/ProblemGraphicRenderer";
 import ProblemDrawingCanvas, {
   DEFAULT_PEN_COLOR,
   DEFAULT_PEN_WIDTH,
@@ -363,6 +364,10 @@ export default function VaultPracticeSolveScreen({
                 className={`problem-solve-board relative min-h-[min(72dvh,42rem)] flex-1 overflow-hidden rounded-2xl border border-[#84cc16]/30 bg-[#1f2937] shadow-inner select-none touch-none overscroll-none md:min-h-[min(68dvh,48rem)] lg:min-h-[min(75dvh,52rem)] ${slideClass}`}
               >
                 <div className="pointer-events-none absolute inset-0 z-0 overflow-y-auto px-3 py-3 select-none">
+                  <ProblemGraphicRenderer
+                    svgCode={current?.svg_code}
+                    graphData={current?.graph_data}
+                  />
                   <MathProblemPreview
                     content={current?.problem ?? ""}
                     compact

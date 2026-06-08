@@ -5,8 +5,13 @@ import imageCompression from "browser-image-compression";
 import MathProblemPreview from "@/components/MathProblemPreview";
 import TwinResultSection from "@/components/TwinResultSection";
 import { parseTextSseStream } from "@/lib/gemini-sse";
-import { parseTwinJson } from "@/lib/parse-twin-json";
+import {
+  parseTwinJson,
+  serializeTwinItemsForExclude,
+  type TwinProblemItem,
+} from "@/lib/parse-twin-json";
 import { parseExtractJson, type ExtractDifficulty } from "@/lib/parse-extract-json";
+import { shouldUseProModel } from "@/lib/gemini-models";
 
 const TWIN_CONFIRM_MESSAGE =
   "연습문제 생성 후에는 새로 생성된 문제만 화면에 보이고, 기존에 올린 사진 문제는 지워집니다. 진행하시겠습니까?";
@@ -26,10 +31,12 @@ export default function MathProblemUploadButton({
   const [extractedDifficulty, setExtractedDifficulty] = useState<ExtractDifficulty | null>(
     null,
   );
+  const [hasGeometry, setHasGeometry] = useState(false);
+  const [hasGraph, setHasGraph] = useState(false);
+  const [compressedImage, setCompressedImage] = useState<Blob | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isTwinProcessing, setIsTwinProcessing] = useState(false);
-  const [twinProblems, setTwinProblems] = useState("");
-  const [twinAnswers, setTwinAnswers] = useState("");
+  const [twinItems, setTwinItems] = useState<TwinProblemItem[]>([]);
   const [twinSourceText, setTwinSourceText] = useState("");
   const [isTwinError, setIsTwinError] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +55,9 @@ export default function MathProblemUploadButton({
     setError(null);
     setExtractedText("");
     setExtractedDifficulty(null);
+    setHasGeometry(false);
+    setHasGraph(false);
+    setCompressedImage(null);
     setIsExtracting(true);
 
     try {
@@ -58,6 +68,8 @@ export default function MathProblemUploadButton({
         fileType: "image/webp",
         initialQuality: 0.85,
       });
+
+      setCompressedImage(compressed);
 
       const formData = new FormData();
       formData.append("image", compressed, compressed.name || "problem.webp");
@@ -84,6 +96,8 @@ export default function MathProblemUploadButton({
 
       setExtractedText(parsed.text);
       setExtractedDifficulty(parsed.difficulty);
+      setHasGeometry(parsed.has_geometry);
+      setHasGraph(parsed.has_graph);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "이미지 처리 중 오류가 발생했습니다.",
@@ -95,30 +109,46 @@ export default function MathProblemUploadButton({
 
   async function runTwinGeneration(
     problemText: string,
-    excludeProblems?: string,
+    excludeItems?: TwinProblemItem[],
   ) {
     setIsTwinError(false);
-    setTwinProblems("");
-    setTwinAnswers("");
+    setTwinItems([]);
     setIsTwinProcessing(true);
 
     try {
       const difficultyToUse: ExtractDifficulty = extractedDifficulty ?? "high";
+      const visualFlags = {
+        has_geometry: hasGeometry,
+        has_graph: hasGraph,
+      };
+      const usePro = shouldUseProModel(difficultyToUse, visualFlags);
 
-      const payload: {
-        problemText: string;
-        excludeProblems?: string;
-        difficulty?: ExtractDifficulty;
-      } = { problemText, difficulty: difficultyToUse };
-      const trimmedExclude = excludeProblems?.trim();
-      if (trimmedExclude) {
-        payload.excludeProblems = trimmedExclude;
+      const formData = new FormData();
+      formData.append("problemText", problemText);
+      formData.append("difficulty", difficultyToUse);
+      formData.append("has_geometry", String(hasGeometry));
+      formData.append("has_graph", String(hasGraph));
+
+      if (usePro && compressedImage) {
+        formData.append(
+          "image",
+          compressedImage,
+          compressedImage instanceof File
+            ? compressedImage.name
+            : "problem.webp",
+        );
+      }
+
+      if (excludeItems?.length) {
+        formData.append(
+          "excludeProblems",
+          serializeTwinItemsForExclude(excludeItems),
+        );
       }
 
       const response = await fetch("/api/twin", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -130,18 +160,16 @@ export default function MathProblemUploadButton({
       await parseTextSseStream(response, (chunk) => {
         accumulated += chunk;
         const parsed = parseTwinJson(accumulated);
-        if (parsed) {
-          setTwinProblems(parsed.problems);
-          setTwinAnswers(parsed.answers);
+        if (parsed?.items.length) {
+          setTwinItems(parsed.items);
         }
       });
 
       const final = parseTwinJson(accumulated);
-      if (!final?.problems.trim() || !final?.answers.trim()) {
+      if (!final?.items.length || final.items.length < 3) {
         throw new Error("연습문제 응답 형식을 해석하지 못했습니다.");
       }
-      setTwinProblems(final.problems);
-      setTwinAnswers(final.answers);
+      setTwinItems(final.items);
     } catch {
       setIsTwinError(true);
     } finally {
@@ -168,18 +196,20 @@ export default function MathProblemUploadButton({
   }
 
   async function handleTwinMore() {
-    if (!twinSourceText.trim() || !twinProblems.trim() || isTwinProcessing) {
+    if (!twinSourceText.trim() || twinItems.length < 3 || isTwinProcessing) {
       return;
     }
-    await runTwinGeneration(twinSourceText, twinProblems);
+    await runTwinGeneration(twinSourceText, twinItems);
   }
 
   function handleResetToUpload() {
     setPhase("upload");
     setExtractedText("");
     setExtractedDifficulty(null);
-    setTwinProblems("");
-    setTwinAnswers("");
+    setHasGeometry(false);
+    setHasGraph(false);
+    setCompressedImage(null);
+    setTwinItems([]);
     setTwinSourceText("");
     setIsTwinError(false);
     setIsExtracting(false);
@@ -195,8 +225,7 @@ export default function MathProblemUploadButton({
       <TwinResultSection
         userId={userId}
         originalExtractedText={twinSourceText}
-        problems={twinProblems}
-        answers={twinAnswers}
+        items={twinItems}
         isProcessing={isTwinProcessing}
         isTwinError={isTwinError}
         onRetry={handleTwinRetry}
@@ -243,6 +272,15 @@ export default function MathProblemUploadButton({
         content={extractedText}
         isProcessing={isExtracting}
       />
+
+      {hasExtracted && (hasGeometry || hasGraph) ? (
+        <p className="w-full text-center text-xs text-[#a3e635]/90">
+          {hasGeometry ? "도형 포함" : null}
+          {hasGeometry && hasGraph ? " · " : null}
+          {hasGraph ? "그래프 포함" : null}
+          {" — Pro 모델로 연습문제를 생성합니다."}
+        </p>
+      ) : null}
 
       {hasExtracted ? (
         <button

@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import MathProblemPreview from "@/components/MathProblemPreview";
+import ProblemGraphicRenderer from "@/components/ProblemGraphicRenderer";
 import SaveProblemsModal from "@/components/SaveProblemsModal";
-import { splitTwinSections } from "@/lib/split-twin-sections";
 import { isTwinSaveReady } from "@/lib/twin-save-ready";
+import type { TwinProblemItem } from "@/lib/parse-twin-json";
 import type { SaveTwinProblemsInput } from "@/lib/problem-vaults";
 
 type TwinResultSectionProps = {
   userId: string;
   originalExtractedText: string;
-  problems: string;
-  answers: string;
+  items: TwinProblemItem[];
   isProcessing: boolean;
   isTwinError: boolean;
   onRetry: () => void;
@@ -25,11 +25,16 @@ const SECTION_LABELS = [
   { problem: "문제 3", answer: "답 3" },
 ] as const;
 
+const PLACEHOLDER_ITEMS: TwinProblemItem[] = [
+  { question: "", solution: "" },
+  { question: "", solution: "" },
+  { question: "", solution: "" },
+];
+
 export default function TwinResultSection({
   userId,
   originalExtractedText,
-  problems,
-  answers,
+  items,
   isProcessing,
   isTwinError,
   onRetry,
@@ -39,34 +44,25 @@ export default function TwinResultSection({
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
 
-  const problemParts = splitTwinSections(problems);
-  const answerParts = splitTwinSections(answers);
+  const displayItems = useMemo(() => {
+    const merged = [...PLACEHOLDER_ITEMS];
+    for (let i = 0; i < Math.min(items.length, 3); i += 1) {
+      merged[i] = items[i];
+    }
+    return merged;
+  }, [items]);
 
-  const canSave = isTwinSaveReady(
-    problems,
-    answers,
-    isProcessing,
-    isTwinError,
-  );
+  const canSave = isTwinSaveReady(items, isProcessing, isTwinError);
 
   const canGenerateMore =
-    !isProcessing && !isTwinError && problems.trim().length > 0;
+    !isProcessing && !isTwinError && items.length >= 3;
 
   const saveInput: SaveTwinProblemsInput = useMemo(
     () => ({
       originalExtractedText,
-      problems,
-      answers,
-      problemParts,
-      answerParts,
+      items: displayItems,
     }),
-    [
-      originalExtractedText,
-      problems,
-      answers,
-      problemParts,
-      answerParts,
-    ],
+    [originalExtractedText, displayItems],
   );
 
   return (
@@ -133,14 +129,15 @@ export default function TwinResultSection({
       </h2>
 
       {SECTION_LABELS.map((labels, index) => {
-        const problemContent = problemParts[index] ?? "";
-        const answerContent = answerParts[index] ?? "";
+        const item = displayItems[index];
+        const questionContent = item.question;
+        const solutionContent = item.solution;
         const problemPending =
-          isProcessing && !problemContent.trim() && index === 0;
+          isProcessing && !questionContent.trim() && index === 0;
         const answerPending =
           isProcessing &&
-          !answerContent.trim() &&
-          problemContent.trim().length > 0;
+          !solutionContent.trim() &&
+          questionContent.trim().length > 0;
 
         return (
           <div key={labels.problem} className="flex flex-col gap-5">
@@ -148,8 +145,12 @@ export default function TwinResultSection({
               <h3 className="mb-3 text-sm font-bold tracking-tight text-[#84cc16]">
                 {labels.problem}
               </h3>
+              <ProblemGraphicRenderer
+                svgCode={item.svg_code}
+                graphData={item.graph_data}
+              />
               <MathProblemPreview
-                content={problemContent}
+                content={questionContent}
                 isProcessing={problemPending}
                 compact
                 placeholder={`${labels.problem}이 여기에 표시됩니다.`}
@@ -162,7 +163,7 @@ export default function TwinResultSection({
                 {labels.answer}
               </h3>
               <MathProblemPreview
-                content={answerContent}
+                content={solutionContent}
                 isProcessing={answerPending}
                 compact
                 placeholder={`${labels.answer}이 여기에 표시됩니다.`}
