@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     icon: [{ url: "/icon-512.webp", sizes: "512x512", type: "image/webp" }],
     apple: [{ url: "/icon-512.webp", sizes: "512x512", type: "image/webp" }],
   },
+  verification: {
+    google: "IYXL4Qg4hKsSJ1jfNnCEwbXtqEaMY3pwAqTi_Dh1Iug",
+  },
 };
 
 export const viewport: Viewport = {
