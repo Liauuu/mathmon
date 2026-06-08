@@ -25,6 +25,7 @@ import {
   buildSamLectureResumeUrl,
   type SamPracticeParams,
 } from "@/lib/sam-integration";
+import { syncSamLectureProgressFromVault } from "@/lib/sam-lecture-progress";
 import { syncSamWrongAnswerFromVault } from "@/lib/sam-wrong-answers";
 import {
   loadStudentVaultGrades,
@@ -217,6 +218,11 @@ export default function VaultPracticeSolveScreen({
           current.id,
           status,
         );
+        await syncSamLectureProgressFromVault({
+          sam,
+          vaultProblemId: current.id,
+          status,
+        });
         if (status === "incorrect") {
           await syncSamWrongAnswerFromVault({
             sam,
