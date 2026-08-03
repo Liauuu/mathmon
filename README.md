@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MathMon
 
-## Getting Started
+MathMon is an AI-powered mathematics learning platform that transforms photos of math problems into personalized practice sets.
 
-First, run the development server:
+Using Google Gemini, the platform extracts problem information from uploaded images, generates similar practice problems, renders graphs or geometric figures when needed, and provides an interactive environment for solving and reviewing mathematics.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### AI Problem Generation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Upload photos of math problems
+- OCR-based problem extraction
+- Automatic difficulty analysis
+- AI-generated practice problem sets
+- Streaming generation (SSE)
+- Generate additional non-duplicated practice problems
 
-## Learn More
+### Interactive Learning
 
-To learn more about Next.js, take a look at the following resources:
+- Step-by-step practice workflow
+- Answer reveal and self-grading
+- Interactive drawing canvas
+- SVG geometry rendering
+- Function graph visualization
+- Automatic progression between problems
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Personal Vault
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Save generated problem sets
+- Organize and rename collections
+- Reorder practice problems
+- Cloud synchronization with Firestore
 
-## Deploy on Vercel
+### SAM Integration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Solve assignments shared by teachers
+- Progress synchronization
+- Answer and mistake tracking
+- Return directly to the SAM learning platform
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Additional Features
+
+- Progressive Web App (PWA)
+- Responsive mobile-first interface
+- Google authentication
+- Automatic image compression
+- Privacy policy and terms pages
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- Next.js (App Router)
+- React
+- TypeScript
+- Tailwind CSS
+
+### Backend
+
+- Next.js API Routes
+- Firebase Authentication
+- Cloud Firestore
+
+### AI
+
+- Google Gemini 2.5 Flash
+- Google Gemini 2.5 Pro
+- Server-Sent Events (SSE)
+
+### Mathematics
+
+- KaTeX
+- React Markdown
+- Function Plot
+- AI-generated SVG geometry
+
+---
+
+## Architecture
+
+- Mobile-first Progressive Web App
+- Firebase Authentication
+- Firestore cloud storage
+- AI-powered OCR and problem generation
+- Real-time streaming responses using SSE
+- Shared Firebase infrastructure with SAM
+
+---
+
+## What I Learned
+
+MathMon gave me practical experience building AI-assisted educational software from end to end. I learned how to integrate multimodal AI models, design streaming APIs, visualize mathematical content, and build scalable applications using Next.js and Firebase. It also strengthened my understanding of combining AI, frontend engineering, and cloud infrastructure into a complete learning platform.
