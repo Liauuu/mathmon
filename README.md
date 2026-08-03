@@ -1,3 +1,5 @@
+<img width="817" height="616" alt="스크린샷 2026-08-03 233409" src="https://github.com/user-attachments/assets/52c48d5b-a364-4a7e-b9d2-19209ff83724" />
+
 # MathMon
 
 MathMon is an AI-powered mathematics learning platform that transforms photos of math problems into personalized practice sets.
